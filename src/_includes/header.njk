@@ -1,0 +1,16 @@
+<header class="site-header">
+  <div class="container">
+    <a href="/" class="site-logo">
+      <img src="/img/neogranadina-plain.png" alt="{{ site.title }}">
+      <span class="site-logo-text">{{ site.title }}</span>
+    </a>
+    <nav class="site-nav">
+      <a href="/">{{ ui.nav.home }}</a>
+      <a href="/buscar/">{{ ui.nav.search }}</a>
+      <form class="header-search" action="/buscar/" method="get">
+        <input type="search" name="q" placeholder="{{ ui.search.placeholder }}">
+        <button type="submit">&#128269;</button>
+      </form>
+    </nav>
+  </div>
+</header>

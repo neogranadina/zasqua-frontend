@@ -1,0 +1,17 @@
+{
+  "name": "zasqua-frontend",
+  "version": "0.1.0",
+  "description": "Zasqua archival catalog frontend",
+  "scripts": {
+    "dev": "DEV_MODE=true eleventy --serve",
+    "build": "eleventy",
+    "build:dev": "DEV_MODE=true eleventy",
+    "debug": "DEBUG=Eleventy* eleventy"
+  },
+  "keywords": ["archive", "catalog", "11ty"],
+  "author": "Neogranadina",
+  "license": "ISC",
+  "devDependencies": {
+    "@11ty/eleventy": "^3.1.2"
+  }
+}

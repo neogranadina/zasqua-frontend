@@ -1,0 +1,11 @@
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="/">{{ ui.breadcrumb.home }}</a>
+  {% for crumb in breadcrumbs %}
+    <span class="breadcrumb-separator">&rsaquo;</span>
+    {% if crumb.url %}
+      <a href="{{ crumb.url }}">{{ crumb.title }}</a>
+    {% else %}
+      <span>{{ crumb.title }}</span>
+    {% endif %}
+  {% endfor %}
+</nav>
