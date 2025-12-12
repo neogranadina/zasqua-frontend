@@ -7,5 +7,6 @@ module.exports = {
   meilisearchIndex: "descriptions",
   language: "es",
   buildTime: new Date().toISOString(),
+  buildDate: new Date().toISOString().split('T')[0],
   buildYear: new Date().getFullYear()
 };
