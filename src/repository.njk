@@ -59,15 +59,11 @@ layout: base.njk
 
 <section class="section">
   <div class="container">
-    {# Toggle and browse button #}
-    <div class="tree-toggle">
-      <button class="tree-toggle-btn" id="toggle-tree-btn" aria-expanded="true">
-        <span class="material-icons">folder_open</span>
-        <span>Mostrar/ocultar el contenido de la colección</span>
-      </button>
-      <a href="/buscar/?repository={{ repo.code }}" class="browse-all-btn">
+    {# Search link above tree #}
+    <div class="tree-header">
+      <a href="/buscar/?repository={{ repo.code }}" class="search-collection-link">
         <span class="material-icons">search</span>
-        <span>Navegar en toda la colección</span>
+        Buscar en esta colección
       </a>
     </div>
 
@@ -90,13 +86,3 @@ layout: base.njk
 </section>
 
 <script src="/js/tree.js"></script>
-<script>
-  // Toggle tree visibility
-  document.getElementById('toggle-tree-btn')?.addEventListener('click', function() {
-    const tree = document.getElementById('collection-tree');
-    const isExpanded = this.getAttribute('aria-expanded') === 'true';
-    this.setAttribute('aria-expanded', !isExpanded);
-    tree.style.display = isExpanded ? 'none' : 'block';
-    this.querySelector('.material-icons').textContent = isExpanded ? 'folder' : 'folder_open';
-  });
-</script>
