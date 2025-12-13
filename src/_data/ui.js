@@ -29,14 +29,35 @@ module.exports = {
     hasDigital: "Copia digitalizada disponible"
   },
 
-  // Description levels
+  // Description levels (singular)
   levels: {
     fonds: "Fondo",
     subfonds: "Subfondo",
     series: "Serie",
     subseries: "Subserie",
     file: "Expediente",
-    item: "Unidad documental"
+    item: "Unidad documental",
+    collection: "Colección",
+    section: "Sección",
+    volume: "Tomo"
+  },
+
+  // Description levels (plural, for child counts)
+  levelsPlural: {
+    fonds: "fondos",
+    subfonds: "subfondos",
+    series: "series",
+    subseries: "subseries",
+    file: "expedientes",
+    item: "documentos",
+    collection: "colecciones",
+    section: "secciones",
+    volume: "tomos",
+    // Container types (from titles)
+    caja: "cajas",
+    carpeta: "carpetas",
+    legajo: "legajos",
+    tomo: "tomos"
   },
 
   // Description page
@@ -75,7 +96,8 @@ module.exports = {
   repository: {
     itemsCount: "documentos",
     dateRange: "Fechas extremas",
-    collectionsHeader: "Fondos y colecciones"
+    collections: "Fondos y colecciones",
+    noCollections: "No hay colecciones disponibles"
   },
 
   // Footer

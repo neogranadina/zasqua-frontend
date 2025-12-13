@@ -1,0 +1,102 @@
+---
+pagination:
+  data: repositories
+  size: 1
+  alias: repo
+permalink: "/{{ repo.code }}/"
+layout: base.njk
+---
+
+{% set repoTitle = repo.name %}
+{% set repoSubtitle = "" %}
+{% set repoImage = "/img/neogranadina-placeholder.png" %}
+
+{% if repo.code == "pe-bn" %}
+  {% set repoTitle = "Narra la Independencia" %}
+  {% set repoSubtitle = "Edición digital de la Colección documental de la Independencia del Perú, creada para el proyecto de historia pública Narra la Independencia desde tu pueblo, tu distrito o tu ciudad." %}
+  {% set repoImage = "/img/narra.jpg" %}
+{% endif %}
+{% if repo.code == "co-ahr" %}
+  {% set repoTitle = "Archivo Histórico de Rionegro" %}
+  {% set repoSubtitle = "Catálogos y materiales digitalizados por Neogranadina en el Archivo Histórico de Rionegro, Antioquia, Colombia." %}
+  {% set repoImage = "/img/AHR_front.jpg" %}
+{% endif %}
+{% if repo.code == "co-ahrb" %}
+  {% set repoTitle = "Archivo Histórico Regional de Boyacá" %}
+  {% set repoSubtitle = "Materiales digitalizados por Neogranadina en el Archivo Histórico Regional de Boyacá, Tunja, Colombia." %}
+  {% set repoImage = "/img/AHRB_front.jpg" %}
+{% endif %}
+{% if repo.code == "co-cihjml" %}
+  {% set repoTitle = "Antiguo Archivo Central del Cauca" %}
+  {% set repoSubtitle = "Catálogos y materiales digitalizados por Neogranadina en el fondo Antiguo Archivo Central del Cauca, del Centro de Investigaciones Históricas José María Arboleda Llorente, Popayán, Colombia." %}
+  {% set repoImage = "/img/ACC_front.jpg" %}
+{% endif %}
+{% if repo.code == "co-ahjci" %}
+  {% set repoTitle = "Archivo Histórico del Juzgado del Circuito de Istmina" %}
+  {% set repoSubtitle = "Materiales digitalizados en el Archivo Histórico del Juzgado del Circuito de Istmina, Chocó, Colombia, en el proyecto EAP1477." %}
+  {% set repoImage = "/img/istmina.jpg" %}
+{% endif %}
+
+<nav class="breadcrumb">
+  <div class="container">
+    <a href="/">{{ ui.nav.home }}</a>
+    <span class="breadcrumb-separator">›</span>
+    <span>{{ repoTitle }}</span>
+  </div>
+</nav>
+
+<section class="repo-header" style="background-image: url('{{ repoImage }}');">
+  <div class="repo-header-overlay">
+    <div class="container">
+      <h1 class="repo-header-title">{{ repoTitle }}</h1>
+      {% if repoSubtitle %}
+        <p class="repo-header-subtitle">{{ repoSubtitle }}</p>
+      {% endif %}
+      <p class="repo-header-stats">{{ (repo.description_count or 0) | numberFormat }} {{ ui.repository.itemsCount }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    {# Toggle and browse button #}
+    <div class="tree-toggle">
+      <button class="tree-toggle-btn" id="toggle-tree-btn" aria-expanded="true">
+        <span class="material-icons">folder_open</span>
+        <span>Mostrar/ocultar el contenido de la colección</span>
+      </button>
+      <a href="/buscar/?repository={{ repo.code }}" class="browse-all-btn">
+        <span class="material-icons">search</span>
+        <span>Navegar en toda la colección</span>
+      </a>
+    </div>
+
+    {# Miller columns tree container #}
+    {% if repo.root_descriptions and repo.root_descriptions.length > 0 %}
+      <div id="collection-tree"
+           data-repo-code="{{ repo.code }}"
+           data-api-url="{{ site.apiUrl }}"
+           data-level-labels='{{ ui.levelsPlural | dump | safe }}'>
+      </div>
+
+      {# Embed root descriptions as JSON for initial load #}
+      <script type="application/json" id="root-descriptions-data">
+        {{ repo.root_descriptions | dump | safe }}
+      </script>
+    {% else %}
+      <p class="text-muted text-center">{{ ui.repository.noCollections }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<script src="/js/tree.js"></script>
+<script>
+  // Toggle tree visibility
+  document.getElementById('toggle-tree-btn')?.addEventListener('click', function() {
+    const tree = document.getElementById('collection-tree');
+    const isExpanded = this.getAttribute('aria-expanded') === 'true';
+    this.setAttribute('aria-expanded', !isExpanded);
+    tree.style.display = isExpanded ? 'none' : 'block';
+    this.querySelector('.material-icons').textContent = isExpanded ? 'folder' : 'folder_open';
+  });
+</script>

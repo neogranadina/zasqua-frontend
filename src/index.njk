@@ -33,11 +33,13 @@ layout: base.njk
       {% set repoTitle = repo.name %}
       {% set repoSubtitle = "" %}
       {% set repoCategory = "" %}
+      {% set repoLink = "/" + repo.code + "/" %}
       {% if repo.code == "pe-bn" %}
         {% set repoImage = "/img/narra.jpg" %}
         {% set repoTitle = "Narra la Independencia" %}
         {% set repoSubtitle = "Edición digital de la Colección documental de la Independencia del Perú, creada para el proyecto de historia pública Narra la Independencia desde tu pueblo, tu distrito o tu ciudad." %}
         {% set repoCategory = "Fuentes sobre la independencia del Perú" %}
+        {% set repoLink = "/pe-bn/pe-bn-cdip/" %}
       {% endif %}
       {% if repo.code == "co-ahr" %}
         {% set repoImage = "/img/AHR_front.jpg" %}
@@ -65,7 +67,7 @@ layout: base.njk
       {% endif %}
 
       <div class="repo-item">
-        <a href="/{{ repo.code }}/" class="repo-link">
+        <a href="{{ repoLink }}" class="repo-link">
           <img src="{{ repoImage }}" alt="{{ repoTitle }}" class="repo-image">
           <div class="repo-caption">
             <h3 class="repo-caption-title">{{ repoTitle }}</h3>

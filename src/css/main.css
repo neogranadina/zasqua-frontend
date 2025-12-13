@@ -13,10 +13,10 @@
   --text-muted: #858585;
 
   /* Accent colors */
-  --accent-primary: #004c52;    /* Teal - buttons, primary actions */
+  --accent-primary: rgba(41,98,255,0.8);    /* Teal - buttons, primary actions */
   --accent-hover: #f18e00;      /* Orange - hover state */
   --accent-link: #F2784B;       /* Orange - link hover */
-  --accent-overlay: rgba(41,98,255,0.6);  /* Blue overlay on hover */
+  --accent-overlay: rgba(41,98,255,0.8);  /* Blue overlay on hover */
 
   /* Footer */
   --footer-bg: #003660;
@@ -129,16 +129,22 @@ img {
 }
 
 .site-logo img {
-  max-height: 40px;
+  max-height: 2.25rem;
   width: auto;
 }
 
 .site-logo-text {
-  font-family: var(--font-logo);
-  font-size: 2rem;
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
   font-weight: 400;
   color: var(--text-dark);
   line-height: 0.9;
+}
+
+.site-logo-text strong {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  font-weight: 500;
 }
 
 .site-logo:hover {
@@ -643,6 +649,109 @@ img {
 }
 
 /* ==================== */
+/* Repository Header    */
+/* ==================== */
+
+.repo-header {
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  min-height: 300px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.repo-header-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
+  display: flex;
+  align-items: flex-end;
+}
+
+.repo-header-overlay .container {
+  padding-bottom: var(--spacing-xl);
+}
+
+.repo-header-title {
+  color: #fff;
+  font-size: 2.5rem;
+  margin: 0 0 var(--spacing-sm);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.repo-header-subtitle {
+  color: rgba(255,255,255,0.9);
+  font-size: 1.1rem;
+  max-width: 700px;
+  margin: 0 0 var(--spacing-md);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+.repo-header-stats {
+  color: rgba(255,255,255,0.8);
+  font-size: 0.9rem;
+  margin: 0;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+/* ==================== */
+/* Description List     */
+/* ==================== */
+
+.description-list {
+  border: 1px solid #dedede;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.description-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid #f0f0f0;
+  color: var(--text-dark);
+  transition: background-color 0.15s ease;
+}
+
+.description-item:last-child {
+  border-bottom: none;
+}
+
+.description-item:hover {
+  background-color: var(--bg-gray);
+  text-decoration: none;
+}
+
+.description-item-content {
+  flex: 1;
+}
+
+.description-item-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--text-dark);
+}
+
+.description-item-meta {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.description-item-arrow {
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  margin-left: var(--spacing-md);
+}
+
+/* ==================== */
 /* Search Results       */
 /* ==================== */
 
@@ -750,3 +859,175 @@ img {
 .mb-0 { margin-bottom: 0; }
 .mb-md { margin-bottom: var(--spacing-md); }
 .mb-lg { margin-bottom: var(--spacing-lg); }
+
+/* ==================== */
+/* Miller Columns Tree  */
+/* ==================== */
+
+.miller-columns {
+  border: 1px solid #dedede;
+  background: #fff;
+  margin: var(--spacing-lg) 0;
+  min-height: 400px;
+  max-height: 600px;
+  overflow: hidden;
+}
+
+.miller-columns-wrapper {
+  display: flex;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.miller-column {
+  flex: 0 0 280px;
+  min-width: 280px;
+  max-width: 350px;
+  border-right: 1px solid #dedede;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 600px;
+}
+
+.miller-column:last-child {
+  border-right: none;
+}
+
+.miller-column-header {
+  padding: 12px 15px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-dark);
+  background: var(--bg-gray);
+  border-bottom: 1px solid #dedede;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.miller-column-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.miller-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.15s ease;
+}
+
+.miller-item:hover {
+  background: #f8f8f8;
+}
+
+.miller-item.selected {
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+.miller-item.selected .miller-item-count {
+  color: rgba(255,255,255,0.8);
+}
+
+.miller-item.selected .miller-item-arrow {
+  color: #fff;
+}
+
+.miller-item.loading {
+  opacity: 0.7;
+}
+
+.miller-item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.miller-item-title {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.miller-item-count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.miller-item-arrow {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: #ccc;
+  margin-left: 10px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .miller-column {
+    flex: 0 0 220px;
+    min-width: 220px;
+  }
+}
+
+/* Collection tree toggle */
+.tree-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid #dedede;
+  margin-bottom: var(--spacing-md);
+}
+
+.tree-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 8px 0;
+}
+
+.tree-toggle-btn:hover {
+  color: var(--accent-primary);
+}
+
+.tree-toggle-btn .material-icons {
+  font-size: 20px;
+}
+
+.browse-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent-primary);
+  color: #fff;
+  padding: 8px 16px;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.browse-all-btn:hover {
+  background: #003a3f;
+  color: #fff;
+}
+
+.browse-all-btn .material-icons {
+  font-size: 18px;
+}

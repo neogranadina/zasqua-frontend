@@ -30,6 +30,63 @@ module.exports = function(eleventyConfig) {
       .filter(item => item !== undefined);
   });
 
+  eleventyConfig.addFilter("filterByRepo", function(arr, repoCode) {
+    if (!arr || !repoCode) return [];
+    return arr.filter(item => item.repository_code === repoCode);
+  });
+
+  eleventyConfig.addFilter("filterByLevel", function(arr, level) {
+    if (!arr || !level) return [];
+    return arr.filter(item => item.description_level === level);
+  });
+
+  // Filter to get children of a description by parent_id
+  eleventyConfig.addFilter("childrenOf", function(arr, parentId) {
+    if (!arr || !parentId) return [];
+    return arr.filter(item => item.parent_id === parentId);
+  });
+
+  // Filter to find description by reference_code
+  eleventyConfig.addFilter("findByRef", function(arr, refCode) {
+    if (!arr || !refCode) return null;
+    return arr.find(item => item.reference_code === refCode);
+  });
+
+  // Build breadcrumb array from parent chain
+  eleventyConfig.addFilter("buildBreadcrumb", function(descriptions, desc) {
+    if (!descriptions || !desc) return [];
+    const breadcrumb = [];
+    let current = desc;
+
+    // Walk up the parent chain
+    while (current && current.parent_reference_code) {
+      const parent = descriptions.find(d => d.reference_code === current.parent_reference_code);
+      if (parent) {
+        breadcrumb.unshift(parent);
+        current = parent;
+      } else {
+        break;
+      }
+    }
+    return breadcrumb;
+  });
+
+  // Get siblings (other children of same parent)
+  eleventyConfig.addFilter("siblingsOf", function(arr, desc) {
+    if (!arr || !desc) return [];
+    return arr.filter(item =>
+      item.parent_id === desc.parent_id &&
+      item.id !== desc.id
+    );
+  });
+
+  // Truncate text with ellipsis
+  eleventyConfig.addFilter("truncate", function(str, length) {
+    if (!str) return "";
+    if (str.length <= length) return str;
+    return str.substring(0, length) + "...";
+  });
+
   // Shortcodes for common patterns
   eleventyConfig.addShortcode("year", () => `${new Date().getFullYear()}`);
 
