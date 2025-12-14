@@ -999,9 +999,8 @@ img {
 /* Expandable metadata row */
 .miller-item-metadata {
   display: none;
-  padding: 10px 0 5px;
-  border-top: 1px solid #eee;
-  margin-top: 8px;
+  padding: 0 0 5px;
+  margin-top: 0;
   font-size: 13px;
 }
 
@@ -1018,6 +1017,17 @@ img {
   color: var(--text-muted);
   font-size: 11px;
   font-family: monospace;
+  margin-bottom: 0;
+}
+
+.miller-item-metadata .metadata-divider {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 6px 0;
+}
+
+.miller-item.selected .miller-item-metadata .metadata-divider {
+  border-top-color: rgba(255,255,255,0.3);
 }
 
 .miller-item-metadata .metadata-count {
@@ -1046,9 +1056,6 @@ img {
   color: var(--accent-link);
 }
 
-.miller-item.selected .miller-item-metadata {
-  border-top-color: rgba(255,255,255,0.2);
-}
 
 .miller-item.selected .miller-item-metadata .metadata-scope,
 .miller-item.selected .miller-item-metadata .metadata-count,

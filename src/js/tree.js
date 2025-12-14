@@ -80,12 +80,19 @@ class MillerColumnsTree {
       const titleSpan = document.createElement('span');
       titleSpan.className = 'miller-item-title';
 
+      // Container words - skip number prefix if title contains these
+      const containerWords = /\b(legajo|caja|tomo|carpeta|vol\.|volumen|expediente|sección|seccion|subsección|subseccion|serie|subserie|fondo|subfondo|unidad|protocolo|capítulo|capitulo)\b/i;
+
       if (item.child_count > 0) {
         // Container: show just title in main row
         titleSpan.textContent = item.title;
         content.appendChild(titleSpan);
+      } else if (containerWords.test(item.title)) {
+        // Leaf item but title suggests it's a container (e.g., empty Legajo)
+        titleSpan.textContent = item.title;
+        content.appendChild(titleSpan);
       } else {
-        // Leaf item: show "### - Title" format
+        // Leaf item: show "### - Title" format if we can extract a number
         const docNum = this.extractDocNumber(item.reference_code);
         if (docNum) {
           titleSpan.textContent = `${docNum} - ${item.title}`;
@@ -277,17 +284,10 @@ class MillerColumnsTree {
     refCode.textContent = item.reference_code;
     metadata.appendChild(refCode);
 
-    // Child count (for containers)
-    if (item.child_count > 0) {
-      const count = document.createElement('p');
-      count.className = 'metadata-count';
-      // Use "unidades compuestas" if children_level is null/undefined (mixed types)
-      const levelLabel = item.children_level
-        ? (this.levelLabels[item.children_level] || 'items')
-        : 'unidades compuestas';
-      count.textContent = `(${item.child_count.toLocaleString('es-ES')} ${levelLabel})`;
-      metadata.appendChild(count);
-    }
+    // Divider line
+    const divider = document.createElement('hr');
+    divider.className = 'metadata-divider';
+    metadata.appendChild(divider);
 
     // Date range (if available)
     if (item.date_expression) {
@@ -309,6 +309,30 @@ class MillerColumnsTree {
       metadata.appendChild(scope);
     }
 
+    // Child count (for containers)
+    if (item.child_count > 0) {
+      const count = document.createElement('p');
+      count.className = 'metadata-count';
+
+      // Container types that indicate children are "unidades compuestas"
+      const containerTypes = ['caja', 'carpeta', 'tomo', 'legajo', 'volume', 'serie', 'subserie', 'section', 'fonds', 'subfonds', 'file'];
+
+      let label;
+      if (!item.children_level) {
+        // Mixed or unknown → generic "unidades"
+        label = item.child_count === 1 ? 'unidad' : 'unidades';
+      } else if (containerTypes.includes(item.children_level)) {
+        // Children are containers
+        label = item.child_count === 1 ? 'unidad compuesta' : 'unidades compuestas';
+      } else {
+        // Children are items/documents
+        label = item.child_count === 1 ? 'unidad simple' : 'unidades simples';
+      }
+
+      count.textContent = `(${item.child_count.toLocaleString('es-ES')} ${label})`;
+      metadata.appendChild(count);
+    }
+
     // Link to full record (flat URL structure)
     const link = document.createElement('a');
     link.href = `/${item.reference_code}/`;
@@ -321,26 +345,20 @@ class MillerColumnsTree {
 
   /**
    * Extract document number from reference code for leaf items
+   * Scans backwards to find the LAST purely numeric segment
    * e.g., "co-ahr-gob-caj001-car001-001" -> "001"
-   * e.g., "co-cihjml-acc-00113-civil-i-a" -> "00113"
+   * e.g., "co-ahrb-aht-005-juicio" -> "005"
    */
   extractDocNumber(refCode) {
     if (!refCode) return null;
 
-    // Try to extract the last numeric segment
-    // Pattern: look for a number after the last dash or hyphenated segment
     const parts = refCode.split('-');
-    const lastPart = parts[parts.length - 1];
 
-    // If last part is purely numeric, use it
-    if (/^\d+$/.test(lastPart)) {
-      return lastPart.padStart(3, '0');
-    }
-
-    // Try to find a numeric pattern like "00113" in the reference
-    const numMatch = refCode.match(/-(\d{3,})/);
-    if (numMatch) {
-      return numMatch[1];
+    // Scan backwards to find the last purely numeric segment
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (/^\d+$/.test(parts[i])) {
+        return parts[i];
+      }
     }
 
     return null;
