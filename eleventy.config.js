@@ -40,10 +40,33 @@ module.exports = function(eleventyConfig) {
     return arr.filter(item => item.description_level === level);
   });
 
-  // Filter to get children of a description by parent_id
+  // Filter to get children of a description by parent_id (cached for performance)
+  let childrenMap = null;
   eleventyConfig.addFilter("childrenOf", function(arr, parentId) {
     if (!arr || !parentId) return [];
-    return arr.filter(item => item.parent_id === parentId);
+    if (!childrenMap) {
+      childrenMap = new Map();
+      for (const item of arr) {
+        if (item.parent_id) {
+          if (!childrenMap.has(item.parent_id)) {
+            childrenMap.set(item.parent_id, []);
+          }
+          childrenMap.get(item.parent_id).push(item);
+        }
+      }
+    }
+    return childrenMap.get(parentId) || [];
+  });
+
+  // Clear children cache on rebuild (watch mode)
+  eleventyConfig.on("eleventy.before", function() {
+    childrenMap = null;
+  });
+
+  // Find repository by code string
+  eleventyConfig.addFilter("findRepoByCode", function(repos, code) {
+    if (!repos || !code) return null;
+    return repos.find(r => r.code === code);
   });
 
   // Filter to find description by reference_code

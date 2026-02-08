@@ -63,11 +63,18 @@ module.exports = {
   // Description page
   description: {
     metadataHeader: "Descripción",
+    accessConditionsHeader: "Condiciones de acceso",
+    notesHeader: "Notas",
     entitiesHeader: "Personas y entidades relacionadas",
     placesHeader: "Lugares",
     childrenHeader: "Contenido",
     previous: "Anterior",
-    next: "Siguiente"
+    next: "Siguiente",
+    notDigitised: "Material no digitalizado",
+    notDigitisedText: "Este documento no cuenta con copia digital. Para consultarlo, diríjase al repositorio de origen.",
+    externalDigital: "Copia digital disponible",
+    externalDigitalText: "Este documento ha sido digitalizado y puede consultarse en el repositorio de la institución custodia.",
+    viewAllChildren: "Ver los {count} documentos"
   },
 
   // Entity roles

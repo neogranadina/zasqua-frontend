@@ -1,0 +1,165 @@
+---
+pagination:
+  data: descriptions
+  size: 1
+  alias: desc
+permalink: "/{{ desc.reference_code }}/"
+layout: base.njk
+eleventyComputed:
+  title: "{{ desc.title }}"
+---
+
+{# Breadcrumb #}
+{% set ancestors = descriptions | buildBreadcrumb(desc) %}
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <div class="container">
+    <a href="/">{{ ui.breadcrumb.home }}</a>
+    {% for ancestor in ancestors %}
+      <span class="breadcrumb-separator">&rsaquo;</span>
+      <a href="/{{ ancestor.reference_code }}/">{{ ancestor.title }}</a>
+    {% endfor %}
+    <span class="breadcrumb-separator">&rsaquo;</span>
+    <span>{{ desc.title }}</span>
+  </div>
+</nav>
+
+{# Header #}
+<div class="detail-header">
+  <div class="container">
+    <h1 class="detail-title">{{ desc.title }}</h1>
+    <div class="detail-meta">
+      <span class="level-badge">{{ ui.levels[desc.description_level] or desc.description_level }}</span>
+      {% if desc.date_expression %} &middot; {{ desc.date_expression }}{% endif %}
+      &middot; {{ desc.reference_code }}
+    </div>
+  </div>
+</div>
+
+{# Two-column layout #}
+<div class="detail-content">
+  <div class="container">
+    <div class="desc-layout">
+
+      {# Left column: metadata #}
+      <div class="desc-metadata">
+
+        {# Section: Descripcion #}
+        {% if desc.scope_content or desc.extent or desc.arrangement %}
+          <div class="detail-section">
+            <h3>{{ ui.description.metadataHeader }}</h3>
+
+            {% if desc.scope_content %}
+              <div class="detail-field">
+                <span class="detail-label">{{ ui.fields.scopeContent }}</span>
+                <span class="detail-value">{{ desc.scope_content }}</span>
+              </div>
+            {% endif %}
+
+            {% if desc.extent %}
+              <div class="detail-field">
+                <span class="detail-label">{{ ui.fields.extent }}</span>
+                <span class="detail-value">{{ desc.extent }}</span>
+              </div>
+            {% endif %}
+
+            {% if desc.arrangement %}
+              <div class="detail-field">
+                <span class="detail-label">{{ ui.fields.arrangement }}</span>
+                <span class="detail-value">{{ desc.arrangement }}</span>
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {# Section: Condiciones de acceso #}
+        {% if desc.access_conditions or desc.language %}
+          <div class="detail-section">
+            <h3>{{ ui.description.accessConditionsHeader }}</h3>
+
+            {% if desc.access_conditions %}
+              <div class="detail-field">
+                <span class="detail-label">{{ ui.fields.accessConditions }}</span>
+                <span class="detail-value">{{ desc.access_conditions }}</span>
+              </div>
+            {% endif %}
+
+            {% if desc.language %}
+              <div class="detail-field">
+                <span class="detail-label">{{ ui.fields.language }}</span>
+                <span class="detail-value">{{ desc.language }}</span>
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {# Section: Notas #}
+        {% if desc.notes %}
+          <div class="detail-section">
+            <h3>{{ ui.description.notesHeader }}</h3>
+            <div class="detail-field">
+              <span class="detail-value">{{ desc.notes }}</span>
+            </div>
+          </div>
+        {% endif %}
+
+        {# Section: Personas y entidades #}
+        {% if desc.creator_display %}
+          <div class="detail-section">
+            <h3>{{ ui.description.entitiesHeader }}</h3>
+            <div class="detail-field">
+              <span class="detail-label">{{ ui.roles.creator }}</span>
+              <span class="detail-value">{{ desc.creator_display }}</span>
+            </div>
+          </div>
+        {% endif %}
+
+        {# Section: Lugares #}
+        {% if desc.place_display %}
+          <div class="detail-section">
+            <h3>{{ ui.description.placesHeader }}</h3>
+            <div class="detail-field">
+              <span class="detail-value">{{ desc.place_display }}</span>
+            </div>
+          </div>
+        {% endif %}
+
+        {# Section: Children #}
+        {% if desc.has_children %}
+          <div class="detail-section">
+            <h3>{{ ui.description.childrenHeader }}</h3>
+            {% include "children-tree.njk" %}
+          </div>
+        {% endif %}
+
+      </div>
+
+      {# Right column: aside (only for descriptions without children) #}
+      {% if not desc.has_children %}
+        <div class="desc-aside">
+          {% if desc.has_digital %}
+            {# State 1: IIIF viewer placeholder #}
+            <div class="desc-viewer">
+              <span class="material-symbols-outlined">image</span>
+            </div>
+          {% else %}
+            {# State 2: Not digitised notice #}
+            {% set repo = repositories | findRepoByCode(desc.repository_code) %}
+            <div class="desc-notice">
+              <span class="material-symbols-outlined desc-notice-icon">inventory_2</span>
+              <div class="desc-notice-title">{{ ui.description.notDigitised }}</div>
+              <p class="desc-notice-text">{{ ui.description.notDigitisedText }}</p>
+              {% if repo %}
+                <p class="desc-notice-repo">{{ repo.name }}{% if repo.city %}, {{ repo.city }}{% endif %}</p>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+  <script src="/js/description.js"></script>
+{% endblock %}

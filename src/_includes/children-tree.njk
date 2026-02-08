@@ -1,0 +1,95 @@
+{#
+  Children tree partial for description pages.
+  Expects: desc (current description), descriptions (all), ui, levels
+#}
+
+{% set children = descriptions | childrenOf(desc.id) %}
+
+{% if children.length > 0 %}
+  {% set isLeafChildren = (desc.children_level == "item") %}
+  {% set displayChildren = children %}
+  {% set hiddenCount = 0 %}
+
+  {% if isLeafChildren and children.length > 10 %}
+    {% set displayChildren = children | limit(10) %}
+    {% set hiddenCount = children.length %}
+  {% endif %}
+
+  <div class="children-tree">
+    {% for child in displayChildren %}
+      {% set childChildren = descriptions | childrenOf(child.id) %}
+      {% set isContainer = child.has_children %}
+      <div class="children-tree-item{% if not loop.last %} children-tree-bordered{% endif %}">
+        <div class="children-tree-row">
+          {% if isContainer %}
+            <button class="children-tree-toggle" aria-expanded="false" aria-label="Expandir">
+              <span class="material-symbols-outlined children-tree-chevron">chevron_right</span>
+            </button>
+          {% else %}
+            <span class="children-tree-spacer"></span>
+          {% endif %}
+
+          <div class="children-tree-content">
+            <div class="children-tree-title-row">
+              <a href="/{{ child.reference_code }}/" class="children-tree-title">{{ child.title }}</a>
+              <span class="level-badge">{{ ui.levels[child.description_level] or child.description_level }}</span>
+            </div>
+            <div class="children-tree-refcode">{{ child.reference_code }}</div>
+            <div class="children-tree-meta">
+              {% if child.date_expression %}{{ child.date_expression }}{% endif %}
+              {% if child.date_expression and child.child_count %} &middot; {% endif %}
+              {% if child.child_count %}{{ child.child_count | numberFormat }} {{ ui.levelsPlural[child.children_level] or "documentos" }}{% endif %}
+            </div>
+          </div>
+        </div>
+
+        {% if isContainer and childChildren.length > 0 %}
+          {% set displayGrandchildren = childChildren %}
+          {% set grandchildOverflow = 0 %}
+
+          {% if childChildren.length > 10 %}
+            {% set displayGrandchildren = childChildren | limit(10) %}
+            {% set grandchildOverflow = childChildren.length %}
+          {% endif %}
+
+          <div class="children-tree-nested">
+            {% for grandchild in displayGrandchildren %}
+              <div class="children-tree-nested-item{% if not loop.last %} children-tree-nested-bordered{% endif %}">
+                <div class="children-tree-title-row">
+                  <a href="/{{ grandchild.reference_code }}/" class="children-tree-title children-tree-title-nested">{{ grandchild.title }}</a>
+                  <span class="level-badge">{{ ui.levels[grandchild.description_level] or grandchild.description_level }}</span>
+                </div>
+                <div class="children-tree-refcode">{{ grandchild.reference_code }}</div>
+                <div class="children-tree-meta">
+                  {% if grandchild.date_expression %}{{ grandchild.date_expression }}{% endif %}
+                  {% if grandchild.date_expression and grandchild.child_count %} &middot; {% endif %}
+                  {% if grandchild.child_count %}{{ grandchild.child_count | numberFormat }} {{ ui.levelsPlural[grandchild.children_level] or "documentos" }}{% endif %}
+                </div>
+              </div>
+            {% endfor %}
+
+            {% if grandchildOverflow > 0 %}
+              {% set formattedGrandchildCount = grandchildOverflow | numberFormat %}
+              <div class="children-tree-more-nested">
+                <a href="/buscar/?parent={{ child.reference_code }}" class="children-tree-more-link">
+                  <span class="material-symbols-outlined">search</span>
+                  {{ ui.description.viewAllChildren | replace("{count}", formattedGrandchildCount) }}
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    {% if isLeafChildren and hiddenCount > 0 %}
+      {% set formattedCount = hiddenCount | numberFormat %}
+      <div class="children-tree-more">
+        <a href="/buscar/?parent={{ desc.reference_code }}" class="children-tree-more-link">
+          <span class="material-symbols-outlined">search</span>
+          {{ ui.description.viewAllChildren | replace("{count}", formattedCount) }}
+        </a>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
