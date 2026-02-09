@@ -220,7 +220,10 @@ class SearchPage {
 
     const count = document.createElement('span');
     count.className = 'results-count';
-    count.textContent = data.total.toLocaleString('es-ES') + ' resultados';
+    const totalText = data.total >= 1000
+      ? 'M\u00E1s de ' + data.total.toLocaleString('es-ES')
+      : data.total.toLocaleString('es-ES');
+    count.textContent = totalText + ' resultados';
     info.appendChild(count);
 
     // Sort buttons (Telar style)
