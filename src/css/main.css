@@ -1034,8 +1034,8 @@ img {
 
 .search-sidebar-heading {
   font-family: var(--font-serif);
-  font-size: 1.25rem;
-  font-weight: 400;
+  font-size: 1.5rem;
+  font-weight: 500;
   color: var(--text-dark);
   margin-bottom: var(--spacing-md);
 }
