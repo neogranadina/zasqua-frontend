@@ -305,7 +305,7 @@ class SearchPage {
     let currentOp = 'AND';
     const input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = 'Buscar en resultados...';
+    input.placeholder = 'B\u00FAsqueda...';
 
     const addTerm = () => {
       const term = input.value.trim();
