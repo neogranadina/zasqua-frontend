@@ -18,6 +18,7 @@ class SearchPage {
 
     this.state = {
       q: '',
+      textFilters: [],
       repository: [],
       level: [],
       has_digital: false,
@@ -48,7 +49,14 @@ class SearchPage {
 
   parseUrlParams() {
     const params = new URLSearchParams(window.location.search);
-    this.state.q = params.get('q') || '';
+    const qValues = params.getAll('q');
+    this.state.q = qValues[0] || '';
+    this.state.textFilters = qValues.slice(1).map(v => {
+      if (v.startsWith('-')) {
+        return { term: v.slice(1), op: 'NOT' };
+      }
+      return { term: v, op: 'AND' };
+    });
     this.state.repository = params.getAll('repository');
     this.state.level = params.getAll('level');
     this.state.has_digital = params.get('has_digital') === 'true';
@@ -60,7 +68,10 @@ class SearchPage {
 
   updateUrl() {
     const params = new URLSearchParams();
-    if (this.state.q) params.set('q', this.state.q);
+    if (this.state.q) params.append('q', this.state.q);
+    for (const f of this.state.textFilters) {
+      params.append('q', f.op === 'NOT' ? `-${f.term}` : f.term);
+    }
     for (const repo of this.state.repository) {
       params.append('repository', repo);
     }
@@ -80,7 +91,9 @@ class SearchPage {
 
   buildApiUrl() {
     const params = new URLSearchParams();
-    params.set('q', this.state.q);
+    const andTerms = this.state.textFilters.filter(f => f.op === 'AND').map(f => f.term);
+    const combinedQuery = [this.state.q, ...andTerms].filter(Boolean).join(' ');
+    params.set('q', combinedQuery);
     for (const repo of this.state.repository) {
       params.append('repository', repo);
     }
@@ -171,8 +184,18 @@ class SearchPage {
     } else {
       const resultsList = document.createElement('div');
       resultsList.className = 'search-results-list';
+      const notTerms = this.state.textFilters
+        .filter(f => f.op === 'NOT')
+        .map(f => f.term.toLowerCase());
       for (const hit of data.hits) {
-        resultsList.appendChild(this.renderResultCard(hit));
+        const card = this.renderResultCard(hit);
+        if (notTerms.length > 0) {
+          const text = card.textContent.toLowerCase();
+          if (notTerms.some(t => text.includes(t))) {
+            card.style.display = 'none';
+          }
+        }
+        resultsList.appendChild(card);
       }
       resultsCol.appendChild(resultsList);
     }
@@ -271,6 +294,103 @@ class SearchPage {
     return info;
   }
 
+  renderRefineInput() {
+    const wrap = document.createElement('div');
+    wrap.className = 'refine-search';
+
+    // Input (first)
+    let currentOp = 'AND';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Buscar en resultados...';
+
+    const addTerm = () => {
+      const term = input.value.trim();
+      if (!term) return;
+      const exists = this.state.textFilters.some(f => f.term === term && f.op === currentOp);
+      if (!exists) {
+        this.state.textFilters.push({ term, op: currentOp });
+        this.state.page = 1;
+        input.value = '';
+        this.updateUrl();
+        this.search();
+      }
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addTerm();
+      }
+    });
+    wrap.appendChild(input);
+
+    // Divider
+    const divider = document.createElement('span');
+    divider.className = 'refine-divider';
+    wrap.appendChild(divider);
+
+    // Operator selector
+    const opWrap = document.createElement('div');
+    opWrap.className = 'refine-op';
+
+    const opBtn = document.createElement('button');
+    opBtn.type = 'button';
+    opBtn.className = 'refine-op-btn';
+    opBtn.innerHTML = 'S\u00ED <span class="refine-op-caret">\u25BE</span>';
+
+    const opMenu = document.createElement('div');
+    opMenu.className = 'refine-op-menu';
+    opMenu.style.display = 'none';
+
+    const options = [
+      { value: 'AND', label: 'S\u00ED' },
+      { value: 'NOT', label: 'No' }
+    ];
+    for (const opt of options) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'refine-op-option';
+      item.textContent = opt.label;
+      item.addEventListener('click', () => {
+        currentOp = opt.value;
+        opBtn.innerHTML = `${opt.label} <span class="refine-op-caret">\u25BE</span>`;
+        opMenu.style.display = 'none';
+      });
+      opMenu.appendChild(item);
+    }
+
+    opBtn.addEventListener('click', () => {
+      opMenu.style.display = opMenu.style.display === 'none' ? '' : 'none';
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!opWrap.contains(e.target)) {
+        opMenu.style.display = 'none';
+      }
+    });
+
+    opWrap.appendChild(opBtn);
+    opWrap.appendChild(opMenu);
+    wrap.appendChild(opWrap);
+
+    // Divider
+    const divider2 = document.createElement('span');
+    divider2.className = 'refine-divider';
+    wrap.appendChild(divider2);
+
+    // Add button (last)
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'refine-add-btn';
+    addBtn.innerHTML = '+';
+    addBtn.setAttribute('aria-label', 'Agregar filtro de texto');
+    addBtn.addEventListener('click', addTerm);
+    wrap.appendChild(addBtn);
+
+    return wrap;
+  }
+
   renderResultCard(hit) {
     const item = document.createElement('div');
     item.className = 'result-item';
@@ -344,30 +464,14 @@ class SearchPage {
     const sidebar = document.createElement('aside');
     sidebar.className = 'search-sidebar';
 
-    // Sidebar search input — filters displayed results client-side
-    const sidebarSearch = document.createElement('input');
-    sidebarSearch.type = 'text';
-    sidebarSearch.className = 'sidebar-search';
-    sidebarSearch.placeholder = 'Buscar en resultados...';
-    sidebarSearch.addEventListener('input', () => {
-      const query = sidebarSearch.value.toLowerCase().trim();
-      const items = this.container.querySelectorAll('.result-item');
-      items.forEach(item => {
-        if (!query) {
-          item.style.display = '';
-          return;
-        }
-        const text = item.textContent.toLowerCase();
-        item.style.display = text.includes(query) ? '' : 'none';
-      });
-    });
-    sidebar.appendChild(sidebarSearch);
-
     // Heading
     const heading = document.createElement('h3');
     heading.className = 'search-sidebar-heading';
     heading.textContent = 'Filtrar por:';
     sidebar.appendChild(heading);
+
+    // Refine search input
+    sidebar.appendChild(this.renderRefineInput());
 
     const facets = data.facets || {};
 
@@ -577,7 +681,8 @@ class SearchPage {
   }
 
   renderPills() {
-    const hasFilters = this.state.repository.length > 0 ||
+    const hasFilters = this.state.textFilters.length > 0 ||
+      this.state.repository.length > 0 ||
       this.state.level.length > 0 ||
       this.state.has_digital ||
       this.state.date_from ||
@@ -587,6 +692,20 @@ class SearchPage {
 
     const container = document.createElement('div');
     container.className = 'active-filters';
+
+    // Text filter chips (with quoted label, like Telar)
+    for (const f of this.state.textFilters) {
+      const prefix = f.op === 'NOT' ? 'No: ' : '';
+      container.appendChild(this.createPill(
+        `${prefix}\u201C${f.term}\u201D`,
+        () => {
+          this.state.textFilters = this.state.textFilters.filter(t => t !== f);
+          this.state.page = 1;
+          this.updateUrl();
+          this.search();
+        }
+      ));
+    }
 
     for (const repo of this.state.repository) {
       container.appendChild(this.createPill(
@@ -835,6 +954,7 @@ class SearchPage {
   }
 
   handleClearAll() {
+    this.state.textFilters = [];
     this.state.repository = [];
     this.state.level = [];
     this.state.has_digital = false;

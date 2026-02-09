@@ -928,23 +928,109 @@ img {
   color: var(--text-muted);
 }
 
-/* Sidebar */
-.sidebar-search {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
+/* Refine search (results column) */
+.refine-search {
+  display: flex;
+  align-items: center;
   border: 1px solid #ddd;
   border-radius: 50px;
-  font-size: 0.875rem;
-  font-family: var(--font-body);
+  overflow: visible;
   background: #f8f8f8;
-  outline: none;
   margin-bottom: var(--spacing-md);
+  position: relative;
 }
 
-.sidebar-search:focus {
+.refine-search input {
+  flex: 1;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: var(--font-body);
+  background: transparent;
+  outline: none;
+  min-width: 0;
+}
+
+.refine-add-btn {
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.875rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.refine-add-btn:hover {
+  color: var(--text-dark);
+}
+
+.refine-search:focus-within {
   border-color: #2c3e50;
   background: #fff;
 }
+
+/* Operator selector */
+.refine-op {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.refine-op-btn {
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  color: var(--text-dark);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.refine-op-caret {
+  font-size: 0.65rem;
+  margin-left: 2px;
+  color: var(--text-muted);
+}
+
+.refine-op-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0.5rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  z-index: 10;
+  min-width: 60px;
+  overflow: hidden;
+}
+
+.refine-op-option {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  text-align: left;
+}
+
+.refine-op-option:hover {
+  background: #f0f0f0;
+}
+
+.refine-divider {
+  width: 1px;
+  height: 1.2rem;
+  background: #ddd;
+  flex-shrink: 0;
+}
+
+/* Sidebar */
 
 .search-sidebar-heading {
   font-family: var(--font-serif);
