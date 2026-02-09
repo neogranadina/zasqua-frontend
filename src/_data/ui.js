@@ -18,7 +18,20 @@ module.exports = {
     results: "{count} resultados",
     noResults: "No se encontraron resultados",
     clearFilters: "Limpiar filtros",
-    filtersHeader: "Filtros"
+    filtersHeader: "Filtros",
+    sidebarHeading: "Filtrar por:",
+    sidebarSearch: "Buscar en resultados...",
+    sort: {
+      label: "Ordenar por",
+      relevance: "Relevancia",
+      dateAsc: "Fecha (más antiguo)",
+      dateDesc: "Fecha (más reciente)",
+      titleAsc: "Título (A-Z)"
+    },
+    filterToggle: "Filtros",
+    noResultsSuggestion: "Intenta limpiar los filtros o modificar la consulta.",
+    dateFrom: "Desde",
+    dateTo: "Hasta"
   },
 
   // Facet labels
