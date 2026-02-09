@@ -205,11 +205,11 @@ class SearchPage {
       resultsCol.appendChild(this.renderPagination(data));
     }
 
-    layout.appendChild(resultsCol);
-
-    // Sidebar (right)
+    // Sidebar (left)
     const sidebar = this.renderFacets(data);
     layout.appendChild(sidebar);
+
+    layout.appendChild(resultsCol);
 
     this.container.appendChild(layout);
   }
