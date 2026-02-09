@@ -221,8 +221,8 @@ class SearchPage {
     const count = document.createElement('span');
     count.className = 'results-count';
     const totalText = data.total >= 1000
-      ? 'M\u00E1s de ' + data.total.toLocaleString('es-ES')
-      : data.total.toLocaleString('es-ES');
+      ? 'M\u00E1s de ' + data.total.toLocaleString('es-CO')
+      : data.total.toLocaleString('es-CO');
     count.textContent = totalText + ' resultados';
     info.appendChild(count);
 
@@ -523,7 +523,7 @@ class SearchPage {
 
         const count = document.createElement('span');
         count.className = 'facet-count';
-        count.textContent = `(${digitalCount.toLocaleString('es-ES')})`;
+        count.textContent = `(${digitalCount.toLocaleString('es-CO')})`;
         label.appendChild(count);
 
         digitalWrap.appendChild(label);
@@ -589,7 +589,7 @@ class SearchPage {
 
       const countSpan = document.createElement('span');
       countSpan.className = 'facet-count';
-      countSpan.textContent = `(${Number(count).toLocaleString('es-ES')})`;
+      countSpan.textContent = `(${Number(count).toLocaleString('es-CO')})`;
       label.appendChild(countSpan);
 
       content.appendChild(label);
