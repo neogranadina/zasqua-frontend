@@ -597,7 +597,7 @@ class SearchPage {
 
       const countSpan = document.createElement('span');
       countSpan.className = 'facet-count';
-      countSpan.textContent = `(${count.toLocaleString('es-ES')})`;
+      countSpan.textContent = `(${Number(count).toLocaleString('es-ES')})`;
       label.appendChild(countSpan);
 
       content.appendChild(label);
