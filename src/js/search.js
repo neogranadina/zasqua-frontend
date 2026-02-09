@@ -444,14 +444,6 @@ class SearchPage {
       item.appendChild(snippet);
     }
 
-    // Path
-    if (hit.path_cache) {
-      const path = document.createElement('div');
-      path.className = 'result-path';
-      path.textContent = hit.path_cache;
-      item.appendChild(path);
-    }
-
     // Repository name
     if (hit.repository_name) {
       const repo = document.createElement('div');
