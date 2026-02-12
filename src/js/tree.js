@@ -8,7 +8,6 @@
 class MillerColumnsTree {
   constructor(container, options = {}) {
     this.container = container;
-    this.apiUrl = options.apiUrl || 'http://localhost:8000/api/v1';
     this.repoCode = options.repoCode || '';
     this.levelLabels = options.levelLabels || {};
     this.columns = [];
@@ -185,7 +184,7 @@ class MillerColumnsTree {
   }
 
   /**
-   * Fetch children from API
+   * Fetch children from static JSON
    */
   async fetchChildren(parentId) {
     // Check cache first
@@ -370,7 +369,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const treeContainer = document.getElementById('collection-tree');
   if (treeContainer) {
     const repoCode = treeContainer.dataset.repoCode;
-    const apiUrl = treeContainer.dataset.apiUrl || 'http://localhost:8000/api/v1';
 
     // Get level labels from data attribute (JSON)
     let levelLabels = {};
@@ -381,7 +379,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const tree = new MillerColumnsTree(treeContainer, {
-      apiUrl,
       repoCode,
       levelLabels
     });

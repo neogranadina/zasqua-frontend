@@ -71,7 +71,6 @@ layout: base.njk
     {% if repo.root_descriptions and repo.root_descriptions.length > 0 %}
       <div id="collection-tree"
            data-repo-code="{{ repo.code }}"
-           data-api-url="{{ site.apiUrl }}"
            data-level-labels='{{ ui.levelsPlural | dump | safe }}'>
       </div>
 

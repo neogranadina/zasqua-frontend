@@ -5,85 +5,76 @@ Static site frontend for the Zasqua archival platform, built with 11ty (Eleventy
 ## Overview
 
 This frontend provides:
-- Static HTML pages for repository and description browsing
-- Meilisearch-powered search interface
-- Responsive design with Neogranadina styling
-- Pre-built pages fetched from the API at build time
+- Static HTML pages for 104K+ archival descriptions
+- Pagefind static search with faceting, accent tolerance, and hierarchical date filtering
+- Miller columns tree navigation from pre-built JSON files
+- Repository browsing pages
+
+The entire public site is static — no server required. Search runs client-side via Pagefind's WASM engine; tree navigation loads pre-built JSON files on demand.
 
 ## Requirements
 
 - Node.js 18+
-- npm or yarn
+- npm
 
-## Setup
+## Build
+
+The full build has three stages:
 
 ```bash
-# Install dependencies
-npm install
+# 1. Build HTML pages from Django API data
+npx eleventy
 
-# Development server (fetches mock data)
-npm run dev
+# 2. Generate tree navigation JSON (1,602 parent files)
+node scripts/generate-tree-json.js
 
-# Production build (fetches from API)
-npm run build
+# 3. Index pages for search
+npx pagefind --site _site
 ```
+
+Or all at once:
+
+```bash
+npx eleventy && node scripts/generate-tree-json.js && npx pagefind --site _site
+```
+
+For quick iteration with a small dataset:
+
+```bash
+DEV_MODE=true npx eleventy && npx pagefind --site _site
+```
+
+The built site is output to `_site/`.
 
 ## Project Structure
 
 ```
 src/
-  _data/           # Data fetchers for API
-  _includes/       # Nunjucks partials (header, footer, etc.)
+  _data/           # Build-time data fetchers (Django API)
+  _includes/       # Nunjucks partials (header, footer, breadcrumb)
   _layouts/        # Page layouts
   css/             # Stylesheets
   img/             # Static images
-  js/              # JavaScript files
+  js/              # Client-side JavaScript (search, tree, description)
   index.njk        # Home page
   repository.njk   # Repository pages
+  description.njk  # Description pages (104K+)
+  buscar.njk       # Search page
+scripts/
+  generate-tree-json.js  # Build script for tree navigation data
 ```
-
-## Development
-
-### DEV_MODE
-
-Set `DEV_MODE=true` to use mock data instead of fetching from the API:
-
-```bash
-DEV_MODE=true npm run dev
-```
-
-### Build
-
-```bash
-# Development build with mock data
-npm run build:dev
-
-# Production build
-npm run build
-```
-
-The built site is output to `_site/`.
 
 ## Pages
 
 | Page | URL Pattern | Description |
 |------|-------------|-------------|
 | Home | `/` | Repository grid with cards |
-| Repository | `/{repo-code}/` | Root descriptions for a repository |
-| Description | `/{repo-code}/{ref-code}/` | Description detail with hierarchy |
-| Search | `/search/` | Full-text search with facets |
+| Repository | `/{repo-code}/` | Miller columns tree for browsing |
+| Description | `/{reference-code}/` | Description detail with metadata |
+| Search | `/buscar/` | Faceted search with Pagefind |
 
-## Styling
+## Data Pipeline
 
-The frontend uses custom CSS based on Neogranadina design:
-- Masonry grid layout for repository cards
-- Collapsible tree navigation for hierarchy
-- Responsive breakpoints for mobile/tablet/desktop
+At build time, 11ty fetches all descriptions from the Django REST API. Pagefind indexes the built pages. The tree JSON script generates children files for hierarchical navigation. Once built, the site is fully self-contained.
 
-## API Integration
-
-Data is fetched at build time from the backend API:
-- `src/_data/repositories.js` - Fetches all repositories
-- `src/_data/descriptions.js` - Fetches descriptions for pages
-
-Configure the API URL in `eleventy.config.js`.
+The Django backend is only needed during builds — not at runtime.
