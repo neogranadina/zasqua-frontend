@@ -792,6 +792,38 @@ img {
   border-radius: 0 50px 50px 0;
 }
 
+.search-empty-query {
+  padding: 3rem 0 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.search-landing-logo {
+  width: 120px;
+  height: auto;
+  margin-bottom: 1.5rem;
+  opacity: 0.35;
+  filter: grayscale(100%);
+}
+
+.search-landing-hints {
+  max-width: 420px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.search-landing-hints p {
+  margin: 0 0 0.75rem;
+}
+
+.search-landing-hints em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
 .results-info {
   padding: var(--spacing-md) 0;
   border-bottom: 1px solid #dedede;
@@ -1105,37 +1137,83 @@ img {
   white-space: nowrap;
 }
 
-.facet-digital {
-  margin-bottom: var(--spacing-md);
-  padding-top: var(--spacing-sm);
+/* Date tree (century → decade → year) */
+.date-tree {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-/* Date range inputs */
-.date-range-inputs {
+.date-tree li {
+  margin: 0;
+}
+
+.date-tree-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 4px;
+  padding: 3px 0;
+  font-size: 0.92rem;
+  color: #333;
 }
 
-.date-input {
-  width: 80px;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 50px;
-  font-size: 0.875rem;
-  font-family: var(--font-body);
-  background: #f8f8f8;
-  outline: none;
-  text-align: center;
+.date-tree-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 0.75rem;
+  flex-shrink: 0;
 }
 
-.date-input:focus {
-  border-color: #2c3e50;
-  background: #fff;
+.date-tree-toggle:hover {
+  color: #333;
 }
 
-.date-range-dash {
-  color: var(--text-muted);
+.date-tree-spacer {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.date-tree-checkbox {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.date-tree-label {
+  flex: 1;
+}
+
+.date-tree-count {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.date-tree-children {
+  list-style: none;
+  padding-left: 22px;
+  margin: 0;
+}
+
+.date-tree-children.collapsed {
+  display: none;
+}
+
+/* Decade level */
+.date-tree-children .date-tree-row {
+  font-size: 0.88rem;
+}
+
+/* Year level */
+.date-tree-children .date-tree-children .date-tree-row {
+  font-size: 0.85rem;
+  color: #555;
 }
 
 /* Active filter pills */
@@ -1237,6 +1315,97 @@ img {
   padding: var(--spacing-xxl) 0;
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+/* Loading overlay — sits on top of results, keeps sidebar visible */
+.search-results.results-loading {
+  position: relative;
+  pointer-events: none;
+}
+.search-results.results-loading > *:not(.search-loading-overlay) {
+  opacity: 0.3;
+  transition: opacity 0.15s ease;
+}
+.search-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Spinner */
+.search-spinner {
+  width: 84px;
+  height: 84px;
+  border: 5px solid #e0dcd4;
+  border-top-color: #2c3e50;
+  border-radius: 50%;
+  animation: spinner-rotate 0.7s linear infinite;
+}
+
+/* First-load centered spinner */
+.search-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* Browse prompt — shown instead of results for large filter-only queries */
+.search-browse-prompt {
+  padding: 3rem 0 2rem;
+  text-align: center;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.browse-prompt-count {
+  font-size: 1.1rem;
+  color: var(--text-dark);
+  margin: 0 0 0.25rem;
+}
+
+.browse-prompt-count strong {
+  font-weight: 700;
+}
+
+.browse-prompt-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.browse-prompt-btn {
+  background: #e8e8e8;
+  border: none;
+  border-radius: 50px;
+  padding: 0.45rem 1.25rem;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  color: #333;
+  cursor: pointer;
+  margin-top: 0.75rem;
+}
+
+.browse-prompt-btn:hover {
+  background: #d8d8d8;
+}
+
+.browse-prompt-warning {
+  font-size: 0.75rem;
+  color: #aaa;
+  margin-top: 6px;
 }
 
 .search-prompt {

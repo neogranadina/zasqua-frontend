@@ -103,6 +103,13 @@ module.exports = function(eleventyConfig) {
     );
   });
 
+  // Extract year from a date string ("YYYY-MM-DD" → "YYYY")
+  eleventyConfig.addFilter("extractYear", function(dateStr) {
+    if (!dateStr) return null;
+    const year = String(dateStr).substring(0, 4);
+    return /^\d{4}$/.test(year) ? year : null;
+  });
+
   // Truncate text with ellipsis
   eleventyConfig.addFilter("truncate", function(str, length) {
     if (!str) return "";

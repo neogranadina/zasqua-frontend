@@ -1,14 +1,15 @@
 /**
  * Search Page
  *
- * Connects to the Meilisearch API via Django proxy to provide
- * full-text search with facets, pagination, and URL-driven state.
+ * Uses the Pagefind static search index to provide full-text search
+ * with facets, pagination, and URL-driven state. No server required.
  */
 
 class SearchPage {
   constructor(container) {
     this.container = container;
-    this.apiUrl = container.dataset.apiUrl || 'http://localhost:8000/api/v1';
+    this.pagefind = null;
+    this.perPage = 20;
     this.levelLabels = {};
     try {
       this.levelLabels = JSON.parse(container.dataset.levelLabels || '{}');
@@ -16,28 +17,41 @@ class SearchPage {
       console.warn('Could not parse level labels');
     }
 
+    // Build reverse map: display label → internal code (for levelLabels pill display)
+    this.levelLabelToCode = {};
+    for (const [code, label] of Object.entries(this.levelLabels)) {
+      this.levelLabelToCode[label] = code;
+    }
+
     this.state = {
       q: '',
       textFilters: [],
-      repository: [],
-      level: [],
-      has_digital: false,
-      date_from: '',
-      date_to: '',
+      repository: [],   // display names (Pagefind filters use display text)
+      level: [],         // display labels (e.g. "Fondo", "Serie")
+      digital_status: [],  // 'zasqua', 'external' (future), 'none'
+      dateFilter: null,  // { level: 'century'|'decade'|'year', label, years: [...existing years only] }
       sort: '',
       page: 1
     };
 
-    this.abortController = null;
-    this.repoNameMap = {};
-    this.dateDebounceTimer = null;
-    this.facetGroupState = { repository: true, level: true, dateRange: false };
+    this.facetGroupState = { repository: true, digital_status: true, level: true, date: true };
 
     this.init();
   }
 
-  init() {
+  async init() {
     this.parseUrlParams();
+
+    try {
+      this.pagefind = await import('/pagefind/pagefind.js');
+      await this.pagefind.init();
+      // Cache global filter counts (for landing page and year validation)
+      this.globalFilters = await this.pagefind.filters();
+    } catch (e) {
+      console.error('Failed to load Pagefind:', e);
+      this.showError();
+      return;
+    }
 
     window.addEventListener('popstate', () => {
       this.parseUrlParams();
@@ -59,9 +73,26 @@ class SearchPage {
     });
     this.state.repository = params.getAll('repository');
     this.state.level = params.getAll('level');
-    this.state.has_digital = params.get('has_digital') === 'true';
-    this.state.date_from = params.get('date_from') || '';
-    this.state.date_to = params.get('date_to') || '';
+    this.state.digital_status = params.getAll('digital_status');
+    // Parse date filter from URL (only one active at a time): year=1750, decade=1550, century=16
+    this.state.dateFilter = null;
+    const urlYear = params.get('year');
+    const urlDecade = params.get('decade');
+    const urlCentury = params.get('century');
+    if (urlYear) {
+      this.state.dateFilter = { level: 'year', label: urlYear, years: [urlYear] };
+    } else if (urlDecade) {
+      const base = parseInt(urlDecade, 10);
+      const years = [];
+      for (let i = base; i < base + 10; i++) years.push(String(i));
+      this.state.dateFilter = { level: 'decade', label: `${urlDecade}s`, years };
+    } else if (urlCentury) {
+      const num = parseInt(urlCentury, 10);
+      const base = (num - 1) * 100;
+      const years = [];
+      for (let i = base; i < base + 100; i++) years.push(String(i));
+      this.state.dateFilter = { level: 'century', label: `Siglo ${this.romanCentury(num)}`, years };
+    }
     this.state.sort = params.get('sort') || '';
     this.state.page = parseInt(params.get('page'), 10) || 1;
   }
@@ -78,9 +109,18 @@ class SearchPage {
     for (const level of this.state.level) {
       params.append('level', level);
     }
-    if (this.state.has_digital) params.set('has_digital', 'true');
-    if (this.state.date_from) params.set('date_from', this.state.date_from);
-    if (this.state.date_to) params.set('date_to', this.state.date_to);
+    for (const ds of this.state.digital_status) {
+      params.append('digital_status', ds);
+    }
+    if (this.state.dateFilter) {
+      const df = this.state.dateFilter;
+      if (df.level === 'year') params.set('year', df.years[0]);
+      else if (df.level === 'decade') params.set('decade', df.years[0]);
+      else if (df.level === 'century') {
+        const firstYear = parseInt(df.years[0], 10);
+        params.set('century', String(Math.floor(firstYear / 100) + 1));
+      }
+    }
     if (this.state.sort) params.set('sort', this.state.sort);
     if (this.state.page > 1) params.set('page', this.state.page);
 
@@ -89,58 +129,125 @@ class SearchPage {
     history.pushState(null, '', url);
   }
 
-  buildApiUrl() {
-    const params = new URLSearchParams();
+  async search() {
+    if (!this.pagefind) return;
+
+    // Build combined query from main query + AND text filters
     const andTerms = this.state.textFilters.filter(f => f.op === 'AND').map(f => f.term);
     const combinedQuery = [this.state.q, ...andTerms].filter(Boolean).join(' ');
-    params.set('q', combinedQuery);
-    for (const repo of this.state.repository) {
-      params.append('repository', repo);
-    }
-    for (const level of this.state.level) {
-      params.append('level', level);
-    }
-    if (this.state.has_digital) params.set('has_digital', 'true');
-    if (this.state.date_from) params.set('date_from', this.state.date_from);
-    if (this.state.date_to) params.set('date_to', this.state.date_to);
-    if (this.state.sort) params.set('sort', this.state.sort);
-    if (this.state.page > 1) params.set('page', this.state.page);
 
-    return `${this.apiUrl}/search/?${params.toString()}`;
-  }
+    // Check if any filters are active
+    const hasActiveFilters = this.state.repository.length > 0 ||
+      this.state.level.length > 0 ||
+      this.state.digital_status.length > 0 ||
+      this.state.dateFilter !== null ||
+      this.state.textFilters.some(f => f.op === 'NOT');
 
-  async search() {
-    if (this.abortController) {
-      this.abortController.abort();
-    }
-    this.abortController = new AbortController();
+    const isLanding = !combinedQuery && !hasActiveFilters;
 
     this.showLoading();
+    // Force browser to paint the spinner before Pagefind's WASM blocks the main thread
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     try {
-      const response = await fetch(this.buildApiUrl(), {
-        signal: this.abortController.signal
+      if (isLanding) {
+        // No query, no filters — show sidebar with global counts
+        const data = {
+          hits: [],
+          filters: this.globalFilters,
+          total: 0,
+          page: 1,
+          total_pages: 0,
+          query: '',
+          landing: true
+        };
+        this.renderSearchResults(data);
+        return;
+      }
+
+      // Resolve dateFilter years against actual index data
+      // (URL-loaded filters may contain years that don't exist in the index)
+      if (this.state.dateFilter && this.globalFilters.year) {
+        const indexYears = new Set(Object.keys(this.globalFilters.year));
+        this.state.dateFilter.years = this.state.dateFilter.years.filter(y => indexYears.has(y));
+      }
+
+      // Option D: For filter-only queries with large expected result sets,
+      // skip the expensive Pagefind WASM scan and show a browse prompt instead.
+      // Text searches are always fast (word index narrows candidates); only
+      // filter-only queries over large sets are slow (~5s for 55K results).
+      if (!combinedQuery && hasActiveFilters && !this.skipBrowsePrompt) {
+        const estimated = this.estimateFilterCount();
+        if (estimated > 10000) {
+          const data = {
+            hits: [],
+            filters: this.globalFilters,
+            total: estimated,
+            page: 1,
+            total_pages: 0,
+            query: '',
+            browsePrompt: true
+          };
+          this.renderSearchResults(data);
+          return;
+        }
+      }
+
+      // Reset the override so future filter changes re-evaluate the threshold
+      this.skipBrowsePrompt = false;
+
+      // Build Pagefind filters
+      // Note: Pagefind arrays are AND (all must match). Use { any: [...] }
+      // for OR (match any). Single values work either way.
+      const pfFilters = {};
+      if (this.state.repository.length) pfFilters.repository = { any: this.state.repository };
+      if (this.state.level.length) pfFilters.level = { any: this.state.level };
+      if (this.state.digital_status.length) pfFilters.digital_status = { any: this.state.digital_status };
+      if (this.state.dateFilter && this.state.dateFilter.years.length) {
+        pfFilters.year = { any: this.state.dateFilter.years };
+      }
+
+      // Build Pagefind sort
+      const pfSort = {};
+      if (this.state.sort) {
+        const [field, dir] = this.state.sort.split(':');
+        // Map our sort field names to Pagefind attribute names
+        const pfField = field === 'date_start_year' ? 'date' : field;
+        pfSort[pfField] = dir;
+      }
+
+      // Pass null when no query text (filter-only search)
+      const search = await this.pagefind.search(combinedQuery || null, {
+        filters: Object.keys(pfFilters).length ? pfFilters : undefined,
+        sort: Object.keys(pfSort).length ? pfSort : undefined
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
+      // Lazy-load the current page of results
+      const total = search.results.length;
+      const totalPages = Math.ceil(total / this.perPage);
+      const start = (this.state.page - 1) * this.perPage;
+      const pageResults = search.results.slice(start, start + this.perPage);
+      const hits = await Promise.all(pageResults.map(r => r.data()));
 
-      const data = await response.json();
-      this.cacheRepoNames(data.hits);
+      // Use scoped filter counts from the search result
+      // search.filters: counts if each value were added to current filters
+      // (cross-facet values show the right breakdown; same-facet inactive values show 0)
+      const scopedFilters = search.filters || this.globalFilters;
+
+      // Normalise into the shape renderSearchResults expects
+      const data = {
+        hits,
+        filters: scopedFilters,
+        total,
+        page: this.state.page,
+        total_pages: totalPages,
+        query: combinedQuery
+      };
+
       this.renderSearchResults(data);
     } catch (error) {
-      if (error.name === 'AbortError') return;
       console.error('Search error:', error);
       this.showError();
-    }
-  }
-
-  cacheRepoNames(hits) {
-    for (const hit of hits) {
-      if (hit.repository_code && hit.repository_name) {
-        this.repoNameMap[hit.repository_code] = hit.repository_name;
-      }
     }
   }
 
@@ -152,7 +259,7 @@ class SearchPage {
     const layout = document.createElement('div');
     layout.className = 'search-layout';
 
-    // Results column (left)
+    // Results column
     const resultsCol = document.createElement('div');
     resultsCol.className = 'search-results';
     resultsCol.setAttribute('aria-live', 'polite');
@@ -171,6 +278,76 @@ class SearchPage {
     });
     resultsCol.appendChild(mobileToggle);
 
+    // Landing state: show search prompt in results column
+    if (data.landing) {
+      const landing = document.createElement('div');
+      landing.className = 'search-empty-query';
+
+      const logo = document.createElement('img');
+      logo.src = '/img/neogranadina-plain.png';
+      logo.alt = 'Zasqua';
+      logo.className = 'search-landing-logo';
+      landing.appendChild(logo);
+
+      const hints = document.createElement('div');
+      hints.className = 'search-landing-hints';
+      hints.innerHTML =
+        '<p>Zasqua tiene un sistema de b\u00FAsqueda flexible a partir de filtros: escribe un t\u00E9rmino o selecciona un filtro en el panel lateral para comenzar a explorar el cat\u00E1logo. Luego agrega m\u00E1s hasta encontrar lo que buscas. El sistema ignorar\u00E1 tildes y diacr\u00EDticos, y aproximar\u00E1 t\u00E9rminos cercanos con la misma ra\u00EDz.</p>' +
+        '<p>Agrega t\u00E9rminos escribi\u00E9ndolos en el panel lateral \u2014 selecciona <em>s\u00ED</em> o <em>no</em> para incluir o excluir, y presiona <em>+</em> o Enter. Cada t\u00E9rmino o filtro aparecer\u00E1 como una etiqueta que puedes eliminar y reemplazar con facilidad, as\u00ED que si\u00E9ntete libre de experimentar.</p>';
+      landing.appendChild(hints);
+
+      resultsCol.appendChild(landing);
+
+      // Sidebar + results
+      const sidebar = this.renderFacets(data);
+      layout.appendChild(sidebar);
+      layout.appendChild(resultsCol);
+      this.container.appendChild(layout);
+      return;
+    }
+
+    // Browse prompt: filter-only query with too many results for Pagefind
+    if (data.browsePrompt) {
+      const pills = this.renderPills();
+      if (pills) resultsCol.appendChild(pills);
+
+      const prompt = document.createElement('div');
+      prompt.className = 'search-browse-prompt';
+
+      const countText = document.createElement('p');
+      countText.className = 'browse-prompt-count';
+      countText.innerHTML = `<strong>${data.total.toLocaleString('es-CO')}</strong> registros coinciden con estos filtros.`;
+      prompt.appendChild(countText);
+
+      const hint = document.createElement('p');
+      hint.className = 'browse-prompt-hint';
+      hint.textContent = 'Agrega m\u00E1s t\u00E9rminos o filtros para acotar los resultados, o presiona:';
+      prompt.appendChild(hint);
+
+      const continueBtn = document.createElement('button');
+      continueBtn.type = 'button';
+      continueBtn.className = 'browse-prompt-btn';
+      continueBtn.textContent = 'Ver todos';
+      continueBtn.addEventListener('click', () => {
+        this.skipBrowsePrompt = true;
+        this.search();
+      });
+      prompt.appendChild(continueBtn);
+
+      const warning = document.createElement('p');
+      warning.className = 'browse-prompt-warning';
+      warning.textContent = 'Tomar\u00E1 algunos segundos en cargar.';
+      prompt.appendChild(warning);
+
+      resultsCol.appendChild(prompt);
+
+      const sidebar = this.renderFacets(data);
+      layout.appendChild(sidebar);
+      layout.appendChild(resultsCol);
+      this.container.appendChild(layout);
+      return;
+    }
+
     // Results info bar
     resultsCol.appendChild(this.renderResultsInfo(data));
 
@@ -188,7 +365,7 @@ class SearchPage {
         .filter(f => f.op === 'NOT')
         .map(f => f.term.toLowerCase());
       for (const hit of data.hits) {
-        const card = this.renderResultCard(hit);
+        const card = this.renderResultCard(hit, data.query);
         if (notTerms.length > 0) {
           const text = card.textContent.toLowerCase();
           if (notTerms.some(t => text.includes(t))) {
@@ -205,7 +382,7 @@ class SearchPage {
       resultsCol.appendChild(this.renderPagination(data));
     }
 
-    // Sidebar (left)
+    // Sidebar
     const sidebar = this.renderFacets(data);
     layout.appendChild(sidebar);
 
@@ -220,13 +397,10 @@ class SearchPage {
 
     const count = document.createElement('span');
     count.className = 'results-count';
-    const totalText = data.total >= 1000
-      ? 'M\u00E1s de ' + data.total.toLocaleString('es-CO')
-      : data.total.toLocaleString('es-CO');
-    count.textContent = totalText + ' resultados';
+    count.textContent = data.total.toLocaleString('es-CO') + ' resultados';
     info.appendChild(count);
 
-    // Sort buttons (Telar style)
+    // Sort buttons
     const sortWrap = document.createElement('div');
     sortWrap.className = 'sort-wrap';
 
@@ -254,7 +428,6 @@ class SearchPage {
       btn.type = 'button';
       btn.className = 'sort-btn';
 
-      // Determine if this button is active and its direction
       const currentField = this.state.sort ? this.state.sort.split(':')[0] : '';
       const currentDir = this.state.sort ? this.state.sort.split(':')[1] : '';
       const isActive = opt.field === '' ? !this.state.sort : currentField === opt.field;
@@ -263,7 +436,6 @@ class SearchPage {
 
       btn.textContent = opt.label;
 
-      // Arrow for sortable fields (not relevance)
       if (opt.field) {
         const arrow = document.createElement('span');
         arrow.className = 'sort-arrow';
@@ -277,14 +449,11 @@ class SearchPage {
 
       btn.addEventListener('click', () => {
         if (opt.field === '') {
-          // Relevance — clear sort
           this.handleSort('');
         } else if (isActive) {
-          // Toggle direction
           const newDir = currentDir === 'asc' ? 'desc' : 'asc';
           this.handleSort(`${opt.field}:${newDir}`);
         } else {
-          // Activate with asc default
           this.handleSort(`${opt.field}:asc`);
         }
       });
@@ -301,7 +470,6 @@ class SearchPage {
     const wrap = document.createElement('div');
     wrap.className = 'refine-search';
 
-    // Input (first)
     let currentOp = 'AND';
     const input = document.createElement('input');
     input.type = 'text';
@@ -382,7 +550,7 @@ class SearchPage {
     divider2.className = 'refine-divider';
     wrap.appendChild(divider2);
 
-    // Add button (last)
+    // Add button
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'refine-add-btn';
@@ -394,16 +562,16 @@ class SearchPage {
     return wrap;
   }
 
-  renderResultCard(hit) {
+  renderResultCard(hit, query) {
     const item = document.createElement('div');
     item.className = 'result-item';
 
-    // Title
+    // Title — Pagefind auto-captures from h1 as hit.meta.title
     const title = document.createElement('h3');
     title.className = 'result-title';
     const link = document.createElement('a');
-    link.href = `/${hit.reference_code}/`;
-    link.innerHTML = (hit._formatted && hit._formatted.title) || this.escapeHtml(hit.title);
+    link.href = hit.url;
+    link.innerHTML = this.highlightTerms(this.escapeHtml(hit.meta.title || ''), query);
     title.appendChild(link);
     item.appendChild(title);
 
@@ -411,44 +579,44 @@ class SearchPage {
     const meta = document.createElement('div');
     meta.className = 'result-meta';
 
-    const levelLabel = this.levelLabels[hit.description_level] || hit.description_level;
+    const descLevel = hit.meta.description_level || '';
+    const levelLabel = this.levelLabels[descLevel] || descLevel;
     const badge = document.createElement('span');
     badge.className = 'level-badge';
     badge.textContent = levelLabel;
     meta.appendChild(badge);
 
-    if (hit.reference_code) {
+    if (hit.meta.reference_code) {
       const sep1 = document.createTextNode(' \u00B7 ');
       meta.appendChild(sep1);
       const refCode = document.createElement('span');
-      refCode.textContent = hit.reference_code;
+      refCode.textContent = hit.meta.reference_code;
       meta.appendChild(refCode);
     }
 
-    if (hit.date_expression) {
+    if (hit.meta.date_expression) {
       const sep2 = document.createTextNode(' \u00B7 ');
       meta.appendChild(sep2);
       const date = document.createElement('span');
-      date.textContent = hit.date_expression;
+      date.textContent = hit.meta.date_expression;
       meta.appendChild(date);
     }
 
     item.appendChild(meta);
 
-    // Snippet
-    const snippetContent = hit._formatted && hit._formatted.scope_content;
-    if (snippetContent) {
+    // Snippet — Pagefind provides highlighted excerpt
+    if (hit.excerpt) {
       const snippet = document.createElement('div');
       snippet.className = 'result-snippet';
-      snippet.innerHTML = this.truncateHtml(snippetContent, 200);
+      snippet.innerHTML = this.truncateHtml(hit.excerpt, 200);
       item.appendChild(snippet);
     }
 
     // Repository name
-    if (hit.repository_name) {
+    if (hit.meta.repository_name) {
       const repo = document.createElement('div');
       repo.className = 'result-repo';
-      repo.textContent = hit.repository_name;
+      repo.textContent = hit.meta.repository_name;
       item.appendChild(repo);
     }
 
@@ -468,73 +636,76 @@ class SearchPage {
     // Refine search input
     sidebar.appendChild(this.renderRefineInput());
 
-    const facets = data.facets || {};
+    const filters = data.filters || {};
 
-    // Repository facet
-    if (facets.repository_code) {
+    // Repository facet — keyed by display name, no mapping needed
+    if (filters.repository) {
       sidebar.appendChild(this.renderFacetGroup(
         'Repositorio',
         'repository',
-        facets.repository_code,
+        filters.repository,
         this.state.repository,
-        (code) => this.repoNameMap[code] || code
+        (name) => name  // already display names
       ));
     }
 
-    // Level facet
-    if (facets.description_level) {
+    // Digital status facet
+    if (filters.digital_status) {
+      const digitalLabels = {
+        'zasqua': 'Sí, disponibles en Zasqua',
+        'external': 'Sí, en repositorio externo',
+        'none': 'No, sin digitalizar'
+      };
+      const digitalOrder = ['zasqua', 'external', 'none'];
+      const digitalSort = (a, b) => {
+        const ai = digitalOrder.indexOf(a[0]);
+        const bi = digitalOrder.indexOf(b[0]);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return b[1] - a[1];
+      };
+      sidebar.appendChild(this.renderFacetGroup(
+        'Imágenes disponibles',
+        'digital_status',
+        filters.digital_status,
+        this.state.digital_status,
+        (value) => digitalLabels[value] || value,
+        digitalSort
+      ));
+    }
+
+    // Level facet — keyed by display label, sorted by archival hierarchy
+    if (filters.level) {
+      const levelOrder = ['Fondo', 'Subfondo', 'Colección', 'Sección', 'Serie', 'Subserie', 'Expediente', 'Tomo', 'Unidad documental'];
+      const levelSort = (a, b) => {
+        const ai = levelOrder.indexOf(a[0]);
+        const bi = levelOrder.indexOf(b[0]);
+        // Known levels first in hierarchy order, unknown levels last by count
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return b[1] - a[1];
+      };
       sidebar.appendChild(this.renderFacetGroup(
         'Nivel de descripción',
         'level',
-        facets.description_level,
+        filters.level,
         this.state.level,
-        (key) => this.levelLabels[key] || key
+        (label) => label,
+        levelSort
       ));
     }
 
-    // Date range
-    sidebar.appendChild(this.renderDateRange());
-
-    // Has digital checkbox
-    if (facets.has_digital) {
-      const digitalCount = facets.has_digital['true'] || 0;
-      if (digitalCount > 0) {
-        const digitalWrap = document.createElement('div');
-        digitalWrap.className = 'facet-digital';
-
-        const label = document.createElement('label');
-        label.className = 'facet-option';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = this.state.has_digital;
-        checkbox.addEventListener('change', () => {
-          this.state.has_digital = checkbox.checked;
-          this.state.page = 1;
-          this.updateUrl();
-          this.search();
-        });
-        label.appendChild(checkbox);
-
-        const text = document.createElement('span');
-        text.className = 'facet-label-text';
-        text.textContent = 'Copia digitalizada disponible';
-        label.appendChild(text);
-
-        const count = document.createElement('span');
-        count.className = 'facet-count';
-        count.textContent = `(${digitalCount.toLocaleString('es-CO')})`;
-        label.appendChild(count);
-
-        digitalWrap.appendChild(label);
-        sidebar.appendChild(digitalWrap);
-      }
+    // Date tree (century → decade → year) — only show if any years have results
+    if (filters.year && Object.values(filters.year).some(c => c > 0)) {
+      sidebar.appendChild(this.renderDateTree(filters.year));
     }
 
     return sidebar;
   }
 
-  renderFacetGroup(title, stateKey, facetData, activeValues, labelFn) {
+  renderFacetGroup(title, stateKey, facetData, activeValues, labelFn, sortFn) {
     const group = document.createElement('div');
     group.className = 'facet-group';
 
@@ -561,15 +732,22 @@ class SearchPage {
     content.className = 'facet-group-content';
     content.style.display = isOpen ? '' : 'none';
 
-    // Sort facet entries: active first, then by count descending
+    // Sort facet entries: active first, then custom sort or count descending
     const entries = Object.entries(facetData).sort((a, b) => {
       const aActive = activeValues.includes(a[0]) ? 1 : 0;
       const bActive = activeValues.includes(b[0]) ? 1 : 0;
       if (aActive !== bActive) return bActive - aActive;
+      if (sortFn) return sortFn(a, b);
       return b[1] - a[1];
     });
 
+    // Exclusive drill-down: when a value is selected, hide the rest
+    const hasActive = activeValues.length > 0;
+
     for (const [value, count] of entries) {
+      if (hasActive && !activeValues.includes(value)) continue;
+      // Hide values with zero results (unless currently active)
+      if (count === 0 && !activeValues.includes(value)) continue;
       const label = document.createElement('label');
       label.className = 'facet-option';
 
@@ -599,23 +777,23 @@ class SearchPage {
     return group;
   }
 
-  renderDateRange() {
+  renderDateTree(yearData) {
     const group = document.createElement('div');
     group.className = 'facet-group';
 
-    const isOpen = this.facetGroupState.dateRange !== false;
+    const isOpen = this.facetGroupState.date !== false;
 
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'facet-group-toggle';
-    toggle.innerHTML = '<span class="facet-group-title">Rango de fechas</span><span class="facet-group-indicator">' + (isOpen ? '\u2212' : '+') + '</span>';
+    toggle.innerHTML = '<span class="facet-group-title">Fecha (inicial)</span><span class="facet-group-indicator">' + (isOpen ? '\u2212' : '+') + '</span>';
     toggle.addEventListener('click', () => {
-      this.facetGroupState.dateRange = !this.facetGroupState.dateRange;
+      this.facetGroupState.date = !this.facetGroupState.date;
       const content = group.querySelector('.facet-group-content');
       const indicator = toggle.querySelector('.facet-group-indicator');
       if (content) {
-        content.style.display = this.facetGroupState.dateRange ? '' : 'none';
-        indicator.textContent = this.facetGroupState.dateRange ? '\u2212' : '+';
+        content.style.display = this.facetGroupState.date ? '' : 'none';
+        indicator.textContent = this.facetGroupState.date ? '\u2212' : '+';
       }
     });
     group.appendChild(toggle);
@@ -624,71 +802,261 @@ class SearchPage {
     content.className = 'facet-group-content';
     content.style.display = isOpen ? '' : 'none';
 
-    const row = document.createElement('div');
-    row.className = 'date-range-inputs';
+    // Build hierarchy from flat year data: { "1622": 1, "1750": 45, ... }
+    const centuries = new Map();
 
-    const fromInput = document.createElement('input');
-    fromInput.type = 'number';
-    fromInput.className = 'date-input';
-    fromInput.placeholder = 'Desde';
-    fromInput.min = '1500';
-    fromInput.max = '2025';
-    fromInput.step = '1';
-    fromInput.value = this.state.date_from;
-    fromInput.addEventListener('input', () => {
-      clearTimeout(this.dateDebounceTimer);
-      this.dateDebounceTimer = setTimeout(() => {
-        this.state.date_from = fromInput.value;
-        this.state.page = 1;
-        this.updateUrl();
-        this.search();
-      }, 300);
-    });
-    row.appendChild(fromInput);
+    for (const [yearStr, count] of Object.entries(yearData)) {
+      const year = parseInt(yearStr, 10);
+      if (isNaN(year)) continue;
+      if (count === 0) continue;  // Hide years with zero results
+      const centuryNum = Math.floor(year / 100) + 1;
+      const decadeBase = Math.floor(year / 10) * 10;
 
-    const dash = document.createElement('span');
-    dash.className = 'date-range-dash';
-    dash.textContent = '\u2014';
-    row.appendChild(dash);
+      if (!centuries.has(centuryNum)) {
+        centuries.set(centuryNum, { decades: new Map(), total: 0, years: [] });
+      }
+      const century = centuries.get(centuryNum);
+      century.total += count;
+      century.years.push(yearStr);
 
-    const toInput = document.createElement('input');
-    toInput.type = 'number';
-    toInput.className = 'date-input';
-    toInput.placeholder = 'Hasta';
-    toInput.min = '1500';
-    toInput.max = '2025';
-    toInput.step = '1';
-    toInput.value = this.state.date_to;
-    toInput.addEventListener('input', () => {
-      clearTimeout(this.dateDebounceTimer);
-      this.dateDebounceTimer = setTimeout(() => {
-        this.state.date_to = toInput.value;
-        this.state.page = 1;
-        this.updateUrl();
-        this.search();
-      }, 300);
-    });
-    row.appendChild(toInput);
+      if (!century.decades.has(decadeBase)) {
+        century.decades.set(decadeBase, new Map());
+      }
+      century.decades.get(decadeBase).set(yearStr, count);
+    }
 
-    content.appendChild(row);
+    const df = this.state.dateFilter;
+    const tree = document.createElement('ul');
+    tree.className = 'date-tree';
+
+    const sortedCenturies = Array.from(centuries.entries()).sort((a, b) => a[0] - b[0]);
+
+    for (const [centuryNum, centuryData] of sortedCenturies) {
+      const centuryLabel = `Siglo ${this.romanCentury(centuryNum)}`;
+
+      // Drill-down: if a century is selected, only show that century
+      if (df && df.level === 'century' && df.label !== centuryLabel) continue;
+      if (df && (df.level === 'decade' || df.level === 'year')) {
+        // Check if this century contains the selected decade/year
+        const selectedYear = parseInt(df.years[0], 10);
+        const selectedCentury = Math.floor(selectedYear / 100) + 1;
+        if (selectedCentury !== centuryNum) continue;
+      }
+
+      const isCenturyActive = df && df.level === 'century' && df.label === centuryLabel;
+      const existingYears = centuryData.years;
+
+      const li = document.createElement('li');
+      const row = document.createElement('div');
+      row.className = 'date-tree-row';
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'date-tree-toggle';
+      // Auto-expand when selected or when a child is selected
+      const autoExpand = isCenturyActive || (df && (df.level === 'decade' || df.level === 'year'));
+      toggleBtn.textContent = autoExpand ? '\u25BE' : '\u25B8';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'date-tree-checkbox';
+      checkbox.checked = isCenturyActive;
+      checkbox.addEventListener('change', () => {
+        this.handleDateSelect(checkbox.checked ? {
+          level: 'century', label: centuryLabel, years: existingYears
+        } : null);
+      });
+
+      const label = document.createElement('span');
+      label.className = 'date-tree-label';
+      label.textContent = centuryLabel;
+
+      const countSpan = document.createElement('span');
+      countSpan.className = 'date-tree-count';
+      countSpan.textContent = `(${centuryData.total.toLocaleString('es-CO')})`;
+
+      row.appendChild(toggleBtn);
+      row.appendChild(checkbox);
+      row.appendChild(label);
+      row.appendChild(countSpan);
+      li.appendChild(row);
+
+      // Decades
+      const decadeList = document.createElement('ul');
+      decadeList.className = 'date-tree-children' + (autoExpand ? '' : ' collapsed');
+
+      const sortedDecades = Array.from(centuryData.decades.entries()).sort((a, b) => a[0] - b[0]);
+
+      for (const [decadeBase, yearsMap] of sortedDecades) {
+        const decadeLabel = `${decadeBase}s`;
+        const decadeExistingYears = Array.from(yearsMap.keys());
+
+        // Drill-down: if a decade is selected, only show that decade
+        if (df && df.level === 'decade' && df.label !== decadeLabel) continue;
+        if (df && df.level === 'year') {
+          const selectedDecade = Math.floor(parseInt(df.years[0], 10) / 10) * 10;
+          if (selectedDecade !== decadeBase) continue;
+        }
+
+        let decadeTotal = 0;
+        for (const c of yearsMap.values()) decadeTotal += c;
+
+        const isDecadeActive = df && df.level === 'decade' && df.label === decadeLabel;
+        const autoExpandDecade = isDecadeActive || (df && df.level === 'year');
+
+        const decadeLi = document.createElement('li');
+        const decadeRow = document.createElement('div');
+        decadeRow.className = 'date-tree-row';
+
+        const decadeToggle = document.createElement('button');
+        decadeToggle.type = 'button';
+        decadeToggle.className = 'date-tree-toggle';
+        decadeToggle.textContent = autoExpandDecade ? '\u25BE' : '\u25B8';
+
+        const decadeCb = document.createElement('input');
+        decadeCb.type = 'checkbox';
+        decadeCb.className = 'date-tree-checkbox';
+        decadeCb.checked = isDecadeActive;
+        decadeCb.addEventListener('change', () => {
+          this.handleDateSelect(decadeCb.checked ? {
+            level: 'decade', label: decadeLabel, years: decadeExistingYears
+          } : null);
+        });
+
+        const decadeLabelSpan = document.createElement('span');
+        decadeLabelSpan.className = 'date-tree-label';
+        decadeLabelSpan.textContent = decadeLabel;
+
+        const decadeCount = document.createElement('span');
+        decadeCount.className = 'date-tree-count';
+        decadeCount.textContent = `(${decadeTotal.toLocaleString('es-CO')})`;
+
+        decadeRow.appendChild(decadeToggle);
+        decadeRow.appendChild(decadeCb);
+        decadeRow.appendChild(decadeLabelSpan);
+        decadeRow.appendChild(decadeCount);
+        decadeLi.appendChild(decadeRow);
+
+        // Years
+        const yearList = document.createElement('ul');
+        yearList.className = 'date-tree-children' + (autoExpandDecade ? '' : ' collapsed');
+
+        const sortedYears = Array.from(yearsMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+        for (const [yearStr, yearCount] of sortedYears) {
+          // Drill-down: if a year is selected, only show that year
+          if (df && df.level === 'year' && df.years[0] !== yearStr) continue;
+
+          const isYearActive = df && df.level === 'year' && df.years[0] === yearStr;
+
+          const yearLi = document.createElement('li');
+          const yearRow = document.createElement('div');
+          yearRow.className = 'date-tree-row';
+
+          const spacer = document.createElement('span');
+          spacer.className = 'date-tree-spacer';
+
+          const yearCb = document.createElement('input');
+          yearCb.type = 'checkbox';
+          yearCb.className = 'date-tree-checkbox';
+          yearCb.checked = isYearActive;
+          yearCb.addEventListener('change', () => {
+            this.handleDateSelect(yearCb.checked ? {
+              level: 'year', label: yearStr, years: [yearStr]
+            } : null);
+          });
+
+          const yearLabelSpan = document.createElement('span');
+          yearLabelSpan.className = 'date-tree-label';
+          yearLabelSpan.textContent = yearStr;
+
+          const yearCountSpan = document.createElement('span');
+          yearCountSpan.className = 'date-tree-count';
+          yearCountSpan.textContent = `(${yearCount.toLocaleString('es-CO')})`;
+
+          yearRow.appendChild(spacer);
+          yearRow.appendChild(yearCb);
+          yearRow.appendChild(yearLabelSpan);
+          yearRow.appendChild(yearCountSpan);
+          yearLi.appendChild(yearRow);
+          yearList.appendChild(yearLi);
+        }
+
+        decadeLi.appendChild(yearList);
+
+        decadeToggle.addEventListener('click', () => {
+          const expanded = yearList.classList.contains('collapsed');
+          yearList.classList.toggle('collapsed');
+          decadeToggle.textContent = expanded ? '\u25BE' : '\u25B8';
+        });
+
+        decadeList.appendChild(decadeLi);
+      }
+
+      li.appendChild(decadeList);
+
+      toggleBtn.addEventListener('click', () => {
+        const expanded = decadeList.classList.contains('collapsed');
+        decadeList.classList.toggle('collapsed');
+        toggleBtn.textContent = expanded ? '\u25BE' : '\u25B8';
+      });
+
+      tree.appendChild(li);
+    }
+
+    content.appendChild(tree);
     group.appendChild(content);
     return group;
   }
 
+  handleDateSelect(filter) {
+    this.state.dateFilter = filter;
+    this.state.page = 1;
+    this.updateUrl();
+    this.search();
+  }
+
+  romanCentury(num) {
+    const romans = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX',
+      'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX',
+      'XX', 'XXI', 'XXII'];
+    return romans[num] || String(num);
+  }
+
   renderPills() {
-    const hasFilters = this.state.textFilters.length > 0 ||
+    const hasFilters = this.state.q ||
+      this.state.textFilters.length > 0 ||
       this.state.repository.length > 0 ||
       this.state.level.length > 0 ||
-      this.state.has_digital ||
-      this.state.date_from ||
-      this.state.date_to;
+      this.state.digital_status.length > 0 ||
+      this.state.dateFilter !== null;
 
     if (!hasFilters) return null;
 
     const container = document.createElement('div');
     container.className = 'active-filters';
 
-    // Text filter chips (with quoted label, like Telar)
+    // Main query pill
+    if (this.state.q) {
+      container.appendChild(this.createPill(
+        `\u201C${this.state.q}\u201D`,
+        () => {
+          // Promote the first AND text filter to main query, if any
+          const nextAnd = this.state.textFilters.find(f => f.op === 'AND');
+          if (nextAnd) {
+            this.state.q = nextAnd.term;
+            this.state.textFilters = this.state.textFilters.filter(t => t !== nextAnd);
+          } else {
+            this.state.q = '';
+          }
+          this.state.page = 1;
+          this.updateUrl();
+          this.search();
+        }
+      ));
+    }
+
+    // Text filter chips
     for (const f of this.state.textFilters) {
       const prefix = f.op === 'NOT' ? 'No: ' : '';
       container.appendChild(this.createPill(
@@ -702,25 +1070,28 @@ class SearchPage {
       ));
     }
 
+    // Repository pills — display names directly
     for (const repo of this.state.repository) {
       container.appendChild(this.createPill(
-        this.repoNameMap[repo] || repo,
+        repo,
         () => this.handlePillRemove('repository', repo)
       ));
     }
 
+    // Level pills — display labels directly
     for (const level of this.state.level) {
       container.appendChild(this.createPill(
-        this.levelLabels[level] || level,
+        level,
         () => this.handlePillRemove('level', level)
       ));
     }
 
-    if (this.state.has_digital) {
+    // Date filter pill
+    if (this.state.dateFilter) {
       container.appendChild(this.createPill(
-        'Digitalizado',
+        this.state.dateFilter.label,
         () => {
-          this.state.has_digital = false;
+          this.state.dateFilter = null;
           this.state.page = 1;
           this.updateUrl();
           this.search();
@@ -728,17 +1099,16 @@ class SearchPage {
       ));
     }
 
-    if (this.state.date_from || this.state.date_to) {
-      const dateLabel = (this.state.date_from || '...') + ' \u2013 ' + (this.state.date_to || '...');
+    // Digital status pills
+    const digitalPillLabels = {
+      'zasqua': 'Disponibles en Zasqua',
+      'external': 'Repositorio externo',
+      'none': 'Sin digitalizar'
+    };
+    for (const ds of this.state.digital_status) {
       container.appendChild(this.createPill(
-        dateLabel,
-        () => {
-          this.state.date_from = '';
-          this.state.date_to = '';
-          this.state.page = 1;
-          this.updateUrl();
-          this.search();
-        }
+        digitalPillLabels[ds] || ds,
+        () => this.handlePillRemove('digital_status', ds)
       ));
     }
 
@@ -871,9 +1241,7 @@ class SearchPage {
 
     const hasFilters = this.state.repository.length > 0 ||
       this.state.level.length > 0 ||
-      this.state.has_digital ||
-      this.state.date_from ||
-      this.state.date_to;
+      this.state.digital_status.length > 0;
 
     if (hasFilters) {
       const suggestion = document.createElement('p');
@@ -897,11 +1265,24 @@ class SearchPage {
   // --- State displays ---
 
   showLoading() {
+    // If results already rendered, overlay a loading state without wiping the layout
+    const existingResults = this.container.querySelector('.search-results');
+    if (existingResults) {
+      existingResults.classList.add('results-loading');
+      // Add or reuse a spinner overlay
+      if (!existingResults.querySelector('.search-loading-overlay')) {
+        const overlay = document.createElement('div');
+        overlay.className = 'search-loading-overlay';
+        overlay.innerHTML = '<div class="search-spinner" aria-busy="true"></div>';
+        existingResults.appendChild(overlay);
+      }
+      return;
+    }
+    // First load: show centered spinner
     this.container.innerHTML = '';
     const div = document.createElement('div');
     div.className = 'search-loading';
-    div.setAttribute('aria-busy', 'true');
-    div.textContent = 'Cargando...';
+    div.innerHTML = '<div class="search-spinner" aria-busy="true"></div>';
     this.container.appendChild(div);
   }
 
@@ -926,16 +1307,14 @@ class SearchPage {
     this.container.appendChild(div);
   }
 
+
+
+
   // --- Event handlers ---
 
   handleFilterChange(stateKey, value, checked) {
-    if (checked) {
-      if (!this.state[stateKey].includes(value)) {
-        this.state[stateKey].push(value);
-      }
-    } else {
-      this.state[stateKey] = this.state[stateKey].filter(v => v !== value);
-    }
+    // Exclusive drill-down: selecting a value hides all others
+    this.state[stateKey] = checked ? [value] : [];
     this.state.page = 1;
     this.updateUrl();
     this.search();
@@ -952,9 +1331,8 @@ class SearchPage {
     this.state.textFilters = [];
     this.state.repository = [];
     this.state.level = [];
-    this.state.has_digital = false;
-    this.state.date_from = '';
-    this.state.date_to = '';
+    this.state.digital_status = [];
+    this.state.dateFilter = null;
     this.state.page = 1;
     this.updateUrl();
     this.search();
@@ -976,21 +1354,99 @@ class SearchPage {
 
   // --- Utilities ---
 
+  /**
+   * Estimate the result count for the current filters using global filter counts.
+   * Takes the minimum sum across active filter dimensions (conservative estimate,
+   * since filters are AND'd across facets).
+   */
+  estimateFilterCount() {
+    const counts = [];
+
+    if (this.state.repository.length && this.globalFilters.repository) {
+      let sum = 0;
+      for (const name of this.state.repository) {
+        sum += this.globalFilters.repository[name] || 0;
+      }
+      counts.push(sum);
+    }
+
+    if (this.state.level.length && this.globalFilters.level) {
+      let sum = 0;
+      for (const name of this.state.level) {
+        sum += this.globalFilters.level[name] || 0;
+      }
+      counts.push(sum);
+    }
+
+    if (this.state.digital_status.length && this.globalFilters.digital_status) {
+      let sum = 0;
+      for (const val of this.state.digital_status) {
+        sum += this.globalFilters.digital_status[val] || 0;
+      }
+      counts.push(sum);
+    }
+
+    if (this.state.dateFilter && this.state.dateFilter.years.length && this.globalFilters.year) {
+      let sum = 0;
+      for (const y of this.state.dateFilter.years) {
+        sum += this.globalFilters.year[y] || 0;
+      }
+      counts.push(sum);
+    }
+
+    return counts.length ? Math.min(...counts) : 0;
+  }
+
   escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
 
+  /**
+   * Highlight query terms in text with <mark> tags.
+   * Accent-insensitive: "Garcia" highlights "García".
+   */
+  highlightTerms(html, query) {
+    if (!query) return html;
+
+    const terms = query.split(/\s+/).filter(t => t.length > 0);
+    if (terms.length === 0) return html;
+
+    // Normalise for accent-insensitive comparison
+    const normalize = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    let result = html;
+    for (const term of terms) {
+      const normalizedTerm = normalize(term);
+      // Build a regex that matches each character with optional diacritics
+      const pattern = normalizedTerm.split('').map(ch => {
+        const escaped = ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return escaped + '[\u0300-\u036f]*';
+      }).join('');
+
+      try {
+        const regex = new RegExp(`(${pattern})`, 'gi');
+        // Only match outside existing tags
+        result = result.replace(/(<[^>]*>)|([^<]+)/g, (match, tag, text) => {
+          if (tag) return tag;
+          return text.replace(regex, '<mark>$1</mark>');
+        });
+      } catch (e) {
+        // If regex fails, skip this term
+      }
+    }
+
+    return result;
+  }
+
   truncateHtml(html, maxLength) {
-    // Strip tags to measure text length, then truncate the HTML carefully
     const tmp = document.createElement('div');
     tmp.innerHTML = html;
     const text = tmp.textContent || '';
 
     if (text.length <= maxLength) return html;
 
-    // Walk through the HTML and truncate, preserving <mark> tags
     let charCount = 0;
     let result = '';
     let inTag = false;

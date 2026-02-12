@@ -193,7 +193,7 @@ class MillerColumnsTree {
       return this.cache.get(parentId);
     }
 
-    const response = await fetch(`${this.apiUrl}/descriptions/${parentId}/children/`);
+    const response = await fetch(`/data/children/${parentId}.json`);
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
     }
