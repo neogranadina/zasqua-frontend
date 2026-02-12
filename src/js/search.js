@@ -292,8 +292,8 @@ class SearchPage {
       const hints = document.createElement('div');
       hints.className = 'search-landing-hints';
       hints.innerHTML =
-        '<p>Zasqua tiene un sistema de b\u00FAsqueda flexible a partir de filtros: escribe un t\u00E9rmino o selecciona un filtro en el panel lateral para comenzar a explorar el cat\u00E1logo. Luego agrega m\u00E1s hasta encontrar lo que buscas. El sistema ignorar\u00E1 tildes y diacr\u00EDticos, y aproximar\u00E1 t\u00E9rminos cercanos con la misma ra\u00EDz.</p>' +
-        '<p>Agrega t\u00E9rminos escribi\u00E9ndolos en el panel lateral \u2014 selecciona <em>s\u00ED</em> o <em>no</em> para incluir o excluir, y presiona <em>+</em> o Enter. Cada t\u00E9rmino o filtro aparecer\u00E1 como una etiqueta que puedes eliminar y reemplazar con facilidad, as\u00ED que si\u00E9ntete libre de experimentar.</p>';
+        '<p>Zasqua tiene un sistema de b\u00FAsqueda flexible a partir de filtros: escribe un t\u00E9rmino o selecciona un filtro en el panel de filtros para comenzar a explorar el cat\u00E1logo. Luego agrega m\u00E1s hasta encontrar lo que buscas. El sistema ignorar\u00E1 tildes y diacr\u00EDticos, y aproximar\u00E1 t\u00E9rminos cercanos con la misma ra\u00EDz.</p>' +
+        '<p>Agrega t\u00E9rminos escribi\u00E9ndolos en el panel de filtros \u2014 selecciona <em>s\u00ED</em> o <em>no</em> para incluir o excluir, y presiona <em>+</em> o Enter. Cada t\u00E9rmino o filtro aparecer\u00E1 como una etiqueta que puedes eliminar y reemplazar con facilidad, as\u00ED que si\u00E9ntete libre de experimentar.</p>';
       landing.appendChild(hints);
 
       resultsCol.appendChild(landing);
@@ -627,7 +627,16 @@ class SearchPage {
     const sidebar = document.createElement('aside');
     sidebar.className = 'search-sidebar';
 
-    // Heading
+    // Mobile filter panel header (hidden on desktop via CSS)
+    const panelHeader = document.createElement('div');
+    panelHeader.className = 'filter-panel-header';
+    panelHeader.innerHTML =
+      '<span class="filter-panel-title">Filtrar por:</span>' +
+      '<button class="filter-panel-close" type="button" aria-label="Cerrar filtros">' +
+      '<span class="material-symbols-outlined">close</span></button>';
+    sidebar.appendChild(panelHeader);
+
+    // Heading (visible on desktop, hidden on mobile when panel is open)
     const heading = document.createElement('h3');
     heading.className = 'search-sidebar-heading';
     heading.textContent = 'Filtrar por:';
@@ -701,6 +710,23 @@ class SearchPage {
     if (filters.year && Object.values(filters.year).some(c => c > 0)) {
       sidebar.appendChild(this.renderDateTree(filters.year));
     }
+
+    // Mobile filter panel bottom close (hidden on desktop via CSS)
+    const panelBottom = document.createElement('div');
+    panelBottom.className = 'filter-panel-bottom-close';
+    panelBottom.innerHTML =
+      '<button type="button">' +
+      '<span class="material-symbols-outlined">expand_less</span> Cerrar filtros</button>';
+    sidebar.appendChild(panelBottom);
+
+    // Wire up panel close handlers
+    const closePanel = () => {
+      sidebar.classList.remove('sidebar-open');
+      const toggle = this.container.querySelector('.mobile-filter-toggle');
+      if (toggle) toggle.classList.remove('toggle-open');
+    };
+    panelHeader.querySelector('.filter-panel-close').addEventListener('click', closePanel);
+    panelBottom.querySelector('button').addEventListener('click', closePanel);
 
     return sidebar;
   }
