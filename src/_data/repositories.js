@@ -1,35 +1,15 @@
-const site = require('./site.js');
+const fs = require('fs');
+const path = require('path');
+
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data');
 
 module.exports = async function() {
-  try {
-    // First fetch the list of repositories
-    const listResponse = await fetch(`${site.apiUrl}/repositories/`);
-    if (!listResponse.ok) {
-      throw new Error(`API error: ${listResponse.status}`);
-    }
-    const listData = await listResponse.json();
-    const repos = listData.results || listData;
+  const filePath = path.join(DATA_DIR, 'repositories.json');
+  console.log(`[repositories] Reading ${filePath}`);
 
-    // Then fetch detail for each repository (includes root_descriptions)
-    const detailedRepos = await Promise.all(
-      repos.map(async (repo) => {
-        try {
-          const detailResponse = await fetch(`${site.apiUrl}/repositories/${repo.id}/`);
-          if (detailResponse.ok) {
-            return await detailResponse.json();
-          }
-          return repo; // Fall back to list data if detail fails
-        } catch (err) {
-          console.warn(`Failed to fetch detail for ${repo.code}:`, err.message);
-          return repo;
-        }
-      })
-    );
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const repos = JSON.parse(raw);
 
-    console.log(`Fetched ${detailedRepos.length} repositories with root_descriptions`);
-    return detailedRepos;
-  } catch (error) {
-    console.error('Error fetching repositories:', error.message);
-    return [];
-  }
+  console.log(`[repositories] Loaded ${repos.length} repositories`);
+  return repos;
 };

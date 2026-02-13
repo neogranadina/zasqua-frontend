@@ -177,6 +177,11 @@ eleventyComputed:
   </div>
 </div>
 
+{# OCR text: indexed for search but never displayed #}
+{% if desc.ocr_text %}
+  <div data-pagefind-body data-pagefind-weight="0.5" hidden>{{ desc.ocr_text }}</div>
+{% endif %}
+
 {% block scripts %}
   <script src="/js/description.js"></script>
 {% endblock %}

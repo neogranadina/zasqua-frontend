@@ -4,8 +4,8 @@
   "description": "Zasqua archival catalog frontend",
   "scripts": {
     "dev": "DEV_MODE=true eleventy --serve",
-    "build": "eleventy",
-    "build:dev": "DEV_MODE=true eleventy",
+    "build": "eleventy && npx pagefind --site _site",
+    "build:dev": "DEV_MODE=true eleventy && npx pagefind --site _site",
     "debug": "DEBUG=Eleventy* eleventy"
   },
   "keywords": ["archive", "catalog", "11ty"],
