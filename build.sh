@@ -9,6 +9,9 @@ set -e
 #   B2_APPLICATION_KEY_ID  — read-only key ID for zasqua-export bucket
 #   B2_APPLICATION_KEY     — read-only application key
 
+# Increase Node heap for large Eleventy builds (free tier has 8 GB)
+export NODE_OPTIONS="--max-old-space-size=7168"
+
 echo "=== Installing B2 CLI ==="
 pip install b2[full] --quiet
 
