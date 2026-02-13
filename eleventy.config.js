@@ -16,6 +16,11 @@ module.exports = function(eleventyConfig) {
     return arr.slice(0, limit);
   });
 
+  eleventyConfig.addFilter("safeSlug", function(str) {
+    if (!str) return "";
+    return str.replace(/[?#]/g, "");
+  });
+
   eleventyConfig.addFilter("formatDate", function(dateStr) {
     if (!dateStr) return "";
     return dateStr;

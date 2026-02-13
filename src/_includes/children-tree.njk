@@ -31,7 +31,7 @@
 
           <div class="children-tree-content">
             <div class="children-tree-title-row">
-              <a href="/{{ child.reference_code }}/" class="children-tree-title">{{ child.title }}</a>
+              <a href="/{{ child.reference_code | safeSlug }}/" class="children-tree-title">{{ child.title }}</a>
               <span class="level-badge">{{ ui.levels[child.description_level] or child.description_level }}</span>
             </div>
             <div class="children-tree-refcode">{{ child.reference_code }}</div>
@@ -56,7 +56,7 @@
             {% for grandchild in displayGrandchildren %}
               <div class="children-tree-nested-item{% if not loop.last %} children-tree-nested-bordered{% endif %}">
                 <div class="children-tree-title-row">
-                  <a href="/{{ grandchild.reference_code }}/" class="children-tree-title children-tree-title-nested">{{ grandchild.title }}</a>
+                  <a href="/{{ grandchild.reference_code | safeSlug }}/" class="children-tree-title children-tree-title-nested">{{ grandchild.title }}</a>
                   <span class="level-badge">{{ ui.levels[grandchild.description_level] or grandchild.description_level }}</span>
                 </div>
                 <div class="children-tree-refcode">{{ grandchild.reference_code }}</div>

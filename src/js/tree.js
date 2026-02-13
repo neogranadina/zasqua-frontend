@@ -334,7 +334,7 @@ class MillerColumnsTree {
 
     // Link to full record (flat URL structure)
     const link = document.createElement('a');
-    link.href = `/${item.reference_code}/`;
+    link.href = `/${item.reference_code.replace(/[?#]/g, '')}/`;
     link.className = 'metadata-link';
     link.textContent = 'Ver registro →';
     metadata.appendChild(link);

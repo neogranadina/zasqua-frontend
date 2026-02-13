@@ -3,7 +3,7 @@ pagination:
   data: descriptions
   size: 1
   alias: desc
-permalink: "/{{ desc.reference_code }}/"
+permalink: "/{{ desc.reference_code | safeSlug }}/"
 layout: base.njk
 eleventyComputed:
   title: "{{ desc.title }}"
@@ -34,7 +34,7 @@ eleventyComputed:
     <a href="/">{{ ui.breadcrumb.home }}</a>
     {% for ancestor in ancestors %}
       <span class="breadcrumb-separator">&rsaquo;</span>
-      <a href="/{{ ancestor.reference_code }}/">{{ ancestor.title }}</a>
+      <a href="/{{ ancestor.reference_code | safeSlug }}/">{{ ancestor.title }}</a>
     {% endfor %}
     <span class="breadcrumb-separator">&rsaquo;</span>
     <span>{{ desc.title }}</span>
