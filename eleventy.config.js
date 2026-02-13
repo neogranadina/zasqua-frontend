@@ -120,6 +120,23 @@ module.exports = function(eleventyConfig) {
     return str.substring(0, length) + "...";
   });
 
+  // Build progress logging
+  let pageCount = 0;
+  const buildStart = Date.now();
+  eleventyConfig.addTransform("progress", function(content) {
+    pageCount++;
+    if (pageCount % 5000 === 0) {
+      const elapsed = ((Date.now() - buildStart) / 1000).toFixed(0);
+      console.log(`[build] ${pageCount.toLocaleString()} pages generated (${elapsed}s)`);
+    }
+    return content;
+  });
+
+  eleventyConfig.on("eleventy.after", function() {
+    const elapsed = ((Date.now() - buildStart) / 1000).toFixed(1);
+    console.log(`[build] Complete: ${pageCount.toLocaleString()} pages in ${elapsed}s`);
+  });
+
   // Shortcodes for common patterns
   eleventyConfig.addShortcode("year", () => `${new Date().getFullYear()}`);
 
