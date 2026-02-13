@@ -43,58 +43,10 @@ module.exports = function(eleventyConfig) {
     return arr.filter(item => item.description_level === level);
   });
 
-  // Filter to get children of a description by parent_id (cached for performance)
-  let childrenMap = null;
-  eleventyConfig.addFilter("childrenOf", function(arr, parentId) {
-    if (!arr || !parentId) return [];
-    if (!childrenMap) {
-      childrenMap = new Map();
-      for (const item of arr) {
-        if (item.parent_id) {
-          if (!childrenMap.has(item.parent_id)) {
-            childrenMap.set(item.parent_id, []);
-          }
-          childrenMap.get(item.parent_id).push(item);
-        }
-      }
-    }
-    return childrenMap.get(parentId) || [];
-  });
-
-  // Clear children cache on rebuild (watch mode)
-  eleventyConfig.on("eleventy.before", function() {
-    childrenMap = null;
-  });
-
-  // Find repository by code string
-  eleventyConfig.addFilter("findRepoByCode", function(repos, code) {
-    if (!repos || !code) return null;
-    return repos.find(r => r.code === code);
-  });
-
   // Filter to find description by reference_code
   eleventyConfig.addFilter("findByRef", function(arr, refCode) {
     if (!arr || !refCode) return null;
     return arr.find(item => item.reference_code === refCode);
-  });
-
-  // Build breadcrumb array from parent chain
-  eleventyConfig.addFilter("buildBreadcrumb", function(descriptions, desc) {
-    if (!descriptions || !desc) return [];
-    const breadcrumb = [];
-    let current = desc;
-
-    // Walk up the parent chain
-    while (current && current.parent_reference_code) {
-      const parent = descriptions.find(d => d.reference_code === current.parent_reference_code);
-      if (parent) {
-        breadcrumb.unshift(parent);
-        current = parent;
-      } else {
-        break;
-      }
-    }
-    return breadcrumb;
   });
 
   // Get siblings (other children of same parent)

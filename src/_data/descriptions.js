@@ -10,13 +10,61 @@ module.exports = async function() {
   console.log(`[descriptions] Reading ${filePath}`);
 
   const raw = fs.readFileSync(filePath, 'utf8');
-  const descriptions = JSON.parse(raw);
+  let descriptions = JSON.parse(raw);
 
   if (DEV_MODE && descriptions.length > DEV_LIMIT) {
     console.log(`[descriptions] DEV_MODE: Limiting to ${DEV_LIMIT} of ${descriptions.length}`);
-    return descriptions.slice(0, DEV_LIMIT);
+    descriptions = descriptions.slice(0, DEV_LIMIT);
   }
 
   console.log(`[descriptions] Loaded ${descriptions.length} descriptions`);
+
+  // Load repositories and build lookup map
+  const reposPath = path.join(DATA_DIR, 'repositories.json');
+  const reposRaw = fs.readFileSync(reposPath, 'utf8');
+  const repos = JSON.parse(reposRaw);
+  const reposByCode = new Map();
+  for (const repo of repos) {
+    reposByCode.set(repo.code, repo);
+  }
+
+  // Build lookup maps
+  const byRefCode = new Map();
+  const childrenByParentId = new Map();
+
+  for (const desc of descriptions) {
+    byRefCode.set(desc.reference_code, desc);
+    if (desc.parent_id) {
+      if (!childrenByParentId.has(desc.parent_id)) {
+        childrenByParentId.set(desc.parent_id, []);
+      }
+      childrenByParentId.get(desc.parent_id).push(desc);
+    }
+  }
+
+  // Attach precomputed data to each description
+  for (const desc of descriptions) {
+    // Ancestors (breadcrumb chain)
+    const ancestors = [];
+    let current = desc;
+    while (current && current.parent_reference_code) {
+      const parent = byRefCode.get(current.parent_reference_code);
+      if (parent) {
+        ancestors.unshift(parent);
+        current = parent;
+      } else {
+        break;
+      }
+    }
+    desc._ancestors = ancestors;
+
+    // Repository object
+    desc._repo = reposByCode.get(desc.repository_code) || null;
+
+    // Children array
+    desc._children = childrenByParentId.get(desc.id) || [];
+  }
+
+  console.log(`[descriptions] Precomputed ancestors, repos, and children`);
   return descriptions;
 };

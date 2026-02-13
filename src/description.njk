@@ -10,7 +10,7 @@ eleventyComputed:
 ---
 
 {# Pagefind metadata (filters, sorting, meta — work outside data-pagefind-body) #}
-{% set repo = repositories | findRepoByCode(desc.repository_code) %}
+{% set repo = desc._repo %}
 <div style="display:none">
   <span data-pagefind-filter="repository">{{ repo.name if repo else desc.repository_code }}</span>
   <span data-pagefind-filter="level">{{ ui.levels[desc.description_level] or desc.description_level }}</span>
@@ -28,7 +28,7 @@ eleventyComputed:
 </div>
 
 {# Breadcrumb #}
-{% set ancestors = descriptions | buildBreadcrumb(desc) %}
+{% set ancestors = desc._ancestors %}
 <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore>
   <div class="container">
     <a href="/">{{ ui.breadcrumb.home }}</a>

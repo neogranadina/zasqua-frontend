@@ -3,7 +3,7 @@
   Expects: desc (current description), descriptions (all), ui, levels
 #}
 
-{% set children = descriptions | childrenOf(desc.id) %}
+{% set children = desc._children %}
 
 {% if children.length > 0 %}
   {% set isLeafChildren = (desc.children_level == "item") %}
@@ -17,7 +17,7 @@
 
   <div class="children-tree">
     {% for child in displayChildren %}
-      {% set childChildren = descriptions | childrenOf(child.id) %}
+      {% set childChildren = child._children %}
       {% set isContainer = child.has_children %}
       <div class="children-tree-item{% if not loop.last %} children-tree-bordered{% endif %}">
         <div class="children-tree-row">
