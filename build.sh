@@ -1,7 +1,10 @@
 #!/bin/bash
 set -e
 
-# Zasqua frontend build script for Netlify.
+# Zasqua frontend local build script.
+# CI builds run in GitHub Actions — see .github/workflows/deploy.yml.
+# This script is a convenience for running the full pipeline locally.
+#
 # Downloads exported data from B2, builds the site with Eleventy,
 # then indexes with Pagefind.
 #
