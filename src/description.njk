@@ -12,7 +12,7 @@ eleventyComputed:
 {# Pagefind metadata (filters, sorting, meta — work outside data-pagefind-body) #}
 {% set repo = desc._repo %}
 <div style="display:none">
-  <span data-pagefind-filter="repository">{{ repo.name if repo else desc.repository_code }}</span>
+  <span data-pagefind-filter="repository">{{ repo.short_name or repo.name if repo else desc.repository_code }}</span>
   <span data-pagefind-filter="level">{{ ui.levels[desc.description_level] or desc.description_level }}</span>
   <span data-pagefind-filter="digital_status">{% if desc.has_digital %}zasqua{% else %}none{% endif %}</span>
   {% set startYear = desc.date_start | extractYear %}
@@ -21,7 +21,8 @@ eleventyComputed:
   <span data-pagefind-sort="date">{{ startYear or '' }}</span>
   <span data-pagefind-meta="reference_code">{{ desc.reference_code }}</span>
   <span data-pagefind-meta="repository_code">{{ desc.repository_code }}</span>
-  <span data-pagefind-meta="repository_name">{{ repo.name if repo else desc.repository_code }}</span>
+  <span data-pagefind-filter="parent_reference_code">{{ desc.parent_reference_code or '' }}</span>
+  <span data-pagefind-meta="repository_name">{{ repo.short_name or repo.name if repo else desc.repository_code }}</span>
   <span data-pagefind-meta="description_level">{{ desc.description_level }}</span>
   <span data-pagefind-meta="date_expression">{{ desc.date_expression or '' }}</span>
   <span data-pagefind-meta="digital_status">{% if desc.has_digital %}zasqua{% else %}none{% endif %}</span>
