@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", function() {
+
+  // Children tree accordion
   var toggles = document.querySelectorAll(".children-tree-toggle");
   for (var i = 0; i < toggles.length; i++) {
     toggles[i].setAttribute("aria-expanded", "false");
@@ -8,4 +10,106 @@ document.addEventListener("DOMContentLoaded", function() {
       this.closest(".children-tree-item").classList.toggle("expanded");
     });
   }
+
+  // IIIF Viewer (TIFY)
+  var viewerEl = document.querySelector(".desc-viewer[data-manifest]");
+  if (!viewerEl || typeof Tify === "undefined") return;
+
+  var manifestUrl = viewerEl.getAttribute("data-manifest");
+
+  // Init TIFY
+  new Tify({
+    container: ".desc-viewer",
+    manifestUrl: manifestUrl,
+    colorMode: "dark",
+    view: null
+  });
+
+  // Trigger viewport recalculation after a layout change
+  function resetViewport() {
+    setTimeout(function() {
+      window.dispatchEvent(new Event("resize"));
+    }, 200);
+  }
+
+  // Wait for TIFY to render, then inject custom controls
+  setTimeout(function() {
+    var header = viewerEl.querySelector(".tify-header");
+    if (!header) return;
+
+    var columns = header.querySelectorAll(".tify-header-column");
+    if (columns.length < 3) return;
+
+    // -- Left group (column 1): size toggle buttons --
+    var leftBtns = document.createElement("div");
+    leftBtns.className = "viewer-left-btns";
+    leftBtns.style.cssText = "display: flex; gap: 0.3rem; align-items: center;";
+
+    var expandBtn = document.createElement("button");
+    expandBtn.className = "viewer-pill viewer-pill-expand";
+    expandBtn.innerHTML = '<span class="material-symbols-outlined">open_in_full</span> Expandir';
+    expandBtn.addEventListener("click", function() {
+      document.querySelector(".desc-layout").classList.add("viewer-expanded");
+      resetViewport();
+    });
+
+    var contraerBtn = document.createElement("button");
+    contraerBtn.className = "viewer-pill viewer-pill-contraer";
+    contraerBtn.innerHTML = '<span class="material-symbols-outlined">close_fullscreen</span> Contraer';
+    contraerBtn.addEventListener("click", function() {
+      document.querySelector(".desc-layout").classList.remove("viewer-expanded");
+      resetViewport();
+    });
+
+    var fullscreenBtn = document.createElement("button");
+    fullscreenBtn.className = "viewer-pill viewer-pill-fullscreen";
+    fullscreenBtn.innerHTML = '<span class="material-symbols-outlined">fullscreen</span> Pantalla completa';
+    fullscreenBtn.addEventListener("click", function() {
+      if (document.fullscreenElement === viewerEl) {
+        document.exitFullscreen();
+      } else {
+        viewerEl.requestFullscreen();
+      }
+    });
+
+    leftBtns.appendChild(expandBtn);
+    leftBtns.appendChild(contraerBtn);
+    leftBtns.appendChild(fullscreenBtn);
+    columns[0].appendChild(leftBtns);
+
+    // -- Right group (column 3): Miniaturas --
+    var rightBtns = document.createElement("div");
+    rightBtns.className = "viewer-right-btns";
+    rightBtns.style.cssText = "gap: 0.3rem; align-items: center;";
+
+    var miniBtn = document.createElement("button");
+    miniBtn.className = "viewer-pill viewer-pill-mini";
+    miniBtn.innerHTML = '<span class="material-symbols-outlined">grid_view</span> Miniaturas';
+    miniBtn.addEventListener("click", function() {
+      // TIFY's popup is hidden via CSS; temporarily unhide to click the
+      // native Pages button, which properly toggles the thumbnails panel
+      // through Vue's internal state.
+      var popup = viewerEl.querySelector(".tify-header-popup");
+      if (!popup) return;
+      popup.style.cssText = "display:flex !important; visibility:hidden; position:absolute;";
+      var pagesBtn = popup.querySelectorAll(".tify-header-button")[1];
+      if (pagesBtn) pagesBtn.click();
+      setTimeout(function() { popup.style.cssText = ""; }, 50);
+    });
+
+    rightBtns.appendChild(miniBtn);
+    columns[2].appendChild(rightBtns);
+
+    // -- Fullscreen label toggle + viewport reset --
+    document.addEventListener("fullscreenchange", function() {
+      if (document.fullscreenElement === viewerEl) {
+        fullscreenBtn.innerHTML = '<span class="material-symbols-outlined">fullscreen_exit</span> Cerrar pantalla completa';
+      } else {
+        fullscreenBtn.innerHTML = '<span class="material-symbols-outlined">fullscreen</span> Pantalla completa';
+      }
+      resetViewport();
+    });
+
+  }, 1500);
+
 });

@@ -16,6 +16,11 @@ module.exports = function(eleventyConfig) {
     return arr.slice(0, limit);
   });
 
+  eleventyConfig.addFilter("splitPipe", function(str) {
+    if (!str) return [str];
+    return str.split("|").map(function(s) { return s.trim(); });
+  });
+
   eleventyConfig.addFilter("safeSlug", function(str) {
     if (!str) return "";
     return str.replace(/[?#]/g, "");

@@ -633,7 +633,6 @@ img {
   color: var(--text-muted);
   padding: var(--spacing-md) 0;
   background: var(--bg-gray);
-  margin-bottom: var(--spacing-lg);
 }
 
 .breadcrumb .container {
@@ -719,6 +718,11 @@ img {
 
 .detail-value {
   color: var(--text-color);
+}
+
+ul.detail-list {
+  margin: 0;
+  padding-left: 1.2em;
 }
 
 /* ==================== */
@@ -1978,7 +1982,7 @@ img {
 }
 
 .desc-aside {
-  width: 400px;
+  width: 440px;
   flex-shrink: 0;
 }
 
@@ -2042,20 +2046,156 @@ img {
   margin: 0;
 }
 
-/* IIIF Viewer Placeholder */
+/* IIIF Viewer */
 .desc-viewer {
-  background: #1a1a1a;
+  height: 540px;
   border-radius: 4px;
-  min-height: 360px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
 }
 
-.desc-viewer .material-symbols-outlined {
-  font-size: 48px;
-  color: rgba(255,255,255,0.3);
+/* TIFY header overrides */
+.desc-viewer .tify-header {
+  background: #fff !important;
+  border-bottom: 1px solid #dedede !important;
+  box-shadow: none !important;
+  padding: 0.35rem 0.5rem !important;
 }
+
+.desc-viewer .tify-header-column:first-child {
+  min-width: auto;
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.desc-viewer .tify-header-title { display: none !important; }
+.desc-viewer .tify-header-button[title="Toggle double-page"] { display: none !important; }
+.desc-viewer .tify-header-button-group.-toggle { display: none !important; }
+.desc-viewer .tify-header-popup { display: none !important; }
+
+/* Always show pagination arrows */
+.desc-viewer .tify-header-button-group.-pagination {
+  display: flex !important;
+  gap: 0.25rem !important;
+}
+
+/* Fix page-select group double border */
+.desc-viewer .tify-header-button-group.-page-select {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  border: none !important;
+  background: none !important;
+}
+
+/* Page-select button */
+.desc-viewer .tify-page-select-button {
+  border-radius: 50px !important;
+  border: 1px solid #ddd !important;
+  background: #f8f8f8 !important;
+  color: #757575 !important;
+  font-family: Lato, sans-serif !important;
+  font-size: 0.8rem !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  line-height: 36px !important;
+  padding: 0 1.8rem 0 0.6rem !important;
+  position: relative !important;
+  cursor: pointer !important;
+}
+
+.desc-viewer .tify-page-select-button::after {
+  content: "\25BE";
+  position: absolute;
+  right: 0.5rem;
+  font-size: 0.7rem;
+}
+
+/* Navigation arrow buttons */
+.desc-viewer .tify-header-button-group.-pagination .tify-header-button {
+  border-radius: 50px !important;
+  border: 1px solid #ddd !important;
+  background: #f8f8f8 !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  width: 36px !important;
+  min-width: 36px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.desc-viewer .tify-header-button-group.-pagination .tify-header-button:hover {
+  background: #fff !important;
+  border-color: #bbb !important;
+}
+
+.desc-viewer .tify-header-button-group.-pagination .tify-header-button svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+/* Scan background */
+.desc-viewer .tify-scan { background: #000 !important; }
+.desc-viewer .openseadragon-container { background: #000 !important; }
+
+/* Injected pill buttons */
+.viewer-pill {
+  border-radius: 50px;
+  border: 1px solid #ddd;
+  background: #f8f8f8;
+  color: #757575;
+  font-family: Lato, sans-serif;
+  font-size: 0.8rem;
+  height: 36px;
+  min-height: 36px;
+  line-height: 36px;
+  padding: 0 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.viewer-pill:hover {
+  background: #fff;
+  border-color: #bbb;
+}
+
+.viewer-pill .material-symbols-outlined {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Aside state: show Expandir, hide expanded-only buttons */
+.viewer-left-btns .viewer-pill-expand { display: inline-flex; }
+.viewer-left-btns .viewer-pill-contraer { display: none; }
+.viewer-left-btns .viewer-pill-fullscreen { display: none; }
+.viewer-right-btns { display: none; }
+
+/* Expanded state */
+.desc-layout.viewer-expanded {
+  flex-direction: column !important;
+}
+
+.desc-layout.viewer-expanded .desc-aside {
+  width: 100% !important;
+  order: -1;
+}
+
+.desc-layout.viewer-expanded .desc-viewer {
+  height: 75vh;
+}
+
+.desc-layout.viewer-expanded .viewer-left-btns .viewer-pill-expand { display: none; }
+.desc-layout.viewer-expanded .viewer-left-btns .viewer-pill-contraer { display: inline-flex; }
+.desc-layout.viewer-expanded .viewer-left-btns .viewer-pill-fullscreen { display: inline-flex; }
+.desc-layout.viewer-expanded .viewer-right-btns { display: flex; }
+
+/* Fullscreen state: hide Contraer (does nothing in fullscreen) */
+.desc-viewer:fullscreen .viewer-pill-contraer { display: none !important; }
+.desc-viewer:-webkit-full-screen .viewer-pill-contraer { display: none !important; }
 
 /* ==================== */
 /* Children Tree        */

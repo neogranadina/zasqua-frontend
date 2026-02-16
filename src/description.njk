@@ -70,14 +70,28 @@ eleventyComputed:
             {% if desc.scope_content %}
               <div class="detail-field">
                 <span class="detail-label">{{ ui.fields.scopeContent }}</span>
-                <span class="detail-value">{{ desc.scope_content }}</span>
+                {% set scParts = desc.scope_content | splitPipe %}
+                {% if scParts.length > 1 %}
+                  <ul class="detail-value detail-list">
+                    {% for part in scParts %}<li>{{ part }}</li>{% endfor %}
+                  </ul>
+                {% else %}
+                  <span class="detail-value">{{ desc.scope_content }}</span>
+                {% endif %}
               </div>
             {% endif %}
 
             {% if desc.extent %}
               <div class="detail-field">
                 <span class="detail-label">{{ ui.fields.extent }}</span>
-                <span class="detail-value">{{ desc.extent }}</span>
+                {% set extParts = desc.extent | splitPipe %}
+                {% if extParts.length > 1 %}
+                  <ul class="detail-value detail-list">
+                    {% for part in extParts %}<li>{{ part }}</li>{% endfor %}
+                  </ul>
+                {% else %}
+                  <span class="detail-value">{{ desc.extent }}</span>
+                {% endif %}
               </div>
             {% endif %}
 
@@ -155,11 +169,9 @@ eleventyComputed:
       {# Right column: aside (only for descriptions without children) #}
       {% if not desc.has_children %}
         <div class="desc-aside">
-          {% if desc.has_digital %}
-            {# State 1: IIIF viewer placeholder #}
-            <div class="desc-viewer">
-              <span class="material-symbols-outlined">image</span>
-            </div>
+          {% if desc.iiif_manifest_url %}
+            {# State 1: IIIF viewer #}
+            <div class="desc-viewer" data-manifest="{{ desc.iiif_manifest_url }}"></div>
           {% else %}
             {# State 2: Not digitised notice #}
             <div class="desc-notice">
@@ -183,6 +195,15 @@ eleventyComputed:
   <div data-pagefind-body data-pagefind-weight="0.5" hidden>{{ desc.ocr_text }}</div>
 {% endif %}
 
+{% block head %}
+  {% if desc.iiif_manifest_url %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tify@0.31.0/dist/tify.css">
+  {% endif %}
+{% endblock %}
+
 {% block scripts %}
+  {% if desc.iiif_manifest_url %}
+    <script src="https://cdn.jsdelivr.net/npm/tify@0.31.0/dist/tify.js"></script>
+  {% endif %}
   <script src="/js/description.js"></script>
 {% endblock %}
