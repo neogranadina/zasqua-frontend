@@ -197,13 +197,13 @@ eleventyComputed:
 
 {% block head %}
   {% if desc.iiif_manifest_url %}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tify@0.31.0/dist/tify.css">
+    <link rel="stylesheet" href="/vendor/tify/tify.css">
   {% endif %}
 {% endblock %}
 
 {% block scripts %}
   {% if desc.iiif_manifest_url %}
-    <script src="https://cdn.jsdelivr.net/npm/tify@0.31.0/dist/tify.js"></script>
+    <script src="/vendor/tify/tify.js"></script>
   {% endif %}
   <script src="/js/description.js"></script>
 {% endblock %}

@@ -3,6 +3,7 @@ module.exports = function(eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/css");
   eleventyConfig.addPassthroughCopy("src/js");
   eleventyConfig.addPassthroughCopy("src/img");
+  eleventyConfig.addPassthroughCopy("src/vendor");
 
   // Tree children JSON (produced by Django export_frontend_data command)
   eleventyConfig.addPassthroughCopy({ "data/children": "data/children" });
