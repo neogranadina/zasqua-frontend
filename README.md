@@ -4,7 +4,7 @@ Static site frontend for the [Zasqua](https://zasqua.org) archival platform, bui
 
 ## Overview
 
-Zasqua provides public access to 104,000+ archival descriptions from five Latin American repositories. The entire public site is static — no server required at runtime. Search runs client-side via Pagefind's WASM engine; tree navigation loads pre-built JSON files on demand.
+Zasqua provides public access to 104,000+ archival descriptions from four Colombian and one Peruvian repository. The entire public site is static — no server required at runtime. Search runs client-side via Pagefind's WASM engine; tree navigation loads pre-built JSON files on demand.
 
 **Key features:**
 
@@ -120,7 +120,7 @@ Search uses [Pagefind](https://pagefind.app/) — a static search library that r
 **Search features:**
 - Multi-word AND queries
 - Quoted phrase search
-- Accent-insensitive matching (Garcia finds Garcia)
+- Accent-insensitive matching (García finds Garcia)
 - Spanish stemming
 - Faceted filtering: repository, description level, digital status, date (century/decade/year)
 - Sorting by date, title, reference code, or relevance
@@ -132,7 +132,7 @@ The full publish workflow:
 1. **Catalog** in Django admin (backend running locally)
 2. **Export** data with `manage.py export_frontend_data`
 3. **Upload** JSON to Backblaze B2 private bucket
-4. **Build** triggered via Netlify build hook — downloads data from B2, runs Eleventy + Pagefind
+4. **Build** triggered manually via GitHub Actions — downloads data from B2, runs Eleventy + Pagefind
 5. **Deploy** to Netlify CDN
 
 The Django backend is only needed during cataloging and export — not at runtime.
@@ -147,7 +147,7 @@ The Django backend is only needed during cataloging and export — not at runtim
 
 ## License
 
-TBD
+GPL-3.0. See [LICENSE](LICENSE) for details.
 
 ---
 
