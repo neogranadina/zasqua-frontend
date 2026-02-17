@@ -39,7 +39,8 @@ module.exports = {
     repository: "Repositorio",
     level: "Nivel de descripción",
     dateRange: "Rango de fechas",
-    hasDigital: "Copia digitalizada disponible"
+    hasDigital: "Copia digitalizada disponible",
+    country: "País"
   },
 
   // Description levels (singular)
@@ -76,7 +77,9 @@ module.exports = {
   // Description page
   description: {
     metadataHeader: "Descripción",
+    bibliographicHeader: "Información bibliográfica",
     accessConditionsHeader: "Condiciones de acceso",
+    relatedMaterialsHeader: "Materiales relacionados",
     notesHeader: "Notas",
     entitiesHeader: "Personas y entidades relacionadas",
     placesHeader: "Lugares",
@@ -106,10 +109,23 @@ module.exports = {
     date: "Fecha",
     extent: "Extensión",
     scopeContent: "Alcance y contenido",
-    arrangement: "Organización",
+    arrangement: "Signatura original",
     accessConditions: "Condiciones de acceso",
+    reproductionConditions: "Condiciones de reproducción",
     language: "Idioma",
-    notes: "Notas"
+    locationOfOriginals: "Localización de los originales",
+    relatedMaterials: "Materiales relacionados",
+    findingAids: "Instrumentos de consulta",
+    notes: "Notas",
+    // Bibliographic
+    publicationTitle: "Publicación",
+    imprint: "Pie de imprenta",
+    editionStatement: "Edición",
+    seriesStatement: "Serie",
+    uniformTitle: "Título uniforme",
+    sectionTitle: "Sección",
+    pages: "Páginas",
+    country: "País"
   },
 
   // Repository page

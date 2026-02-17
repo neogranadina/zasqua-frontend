@@ -26,6 +26,7 @@ class SearchPage {
     this.state = {
       q: '',
       textFilters: [],
+      country: [],       // display names (e.g. "Colombia", "Perú")
       repository: [],   // display names (Pagefind filters use display text)
       level: [],         // display labels (e.g. "Fondo", "Serie")
       digital_status: [],  // 'zasqua', 'external' (future), 'none'
@@ -35,7 +36,7 @@ class SearchPage {
       page: 1
     };
 
-    this.facetGroupState = { repository: true, digital_status: true, level: true, date: true };
+    this.facetGroupState = { country: true, repository: true, digital_status: true, level: true, date: true };
 
     this.init();
   }
@@ -72,6 +73,7 @@ class SearchPage {
       }
       return { term: v, op: 'AND' };
     });
+    this.state.country = params.getAll('country');
     this.state.repository = params.getAll('repository');
     this.state.level = params.getAll('level');
     this.state.digital_status = params.getAll('digital_status');
@@ -104,6 +106,9 @@ class SearchPage {
     if (this.state.q) params.append('q', this.state.q);
     for (const f of this.state.textFilters) {
       params.append('q', f.op === 'NOT' ? `-${f.term}` : f.term);
+    }
+    for (const c of this.state.country) {
+      params.append('country', c);
     }
     for (const repo of this.state.repository) {
       params.append('repository', repo);
@@ -140,7 +145,8 @@ class SearchPage {
     const combinedQuery = [this.state.q, ...andTerms].filter(Boolean).join(' ');
 
     // Check if any filters are active
-    const hasActiveFilters = this.state.repository.length > 0 ||
+    const hasActiveFilters = this.state.country.length > 0 ||
+      this.state.repository.length > 0 ||
       this.state.level.length > 0 ||
       this.state.digital_status.length > 0 ||
       this.state.dateFilter !== null ||
@@ -204,6 +210,7 @@ class SearchPage {
       // Note: Pagefind arrays are AND (all must match). Use { any: [...] }
       // for OR (match any). Single values work either way.
       const pfFilters = {};
+      if (this.state.country.length) pfFilters.country = { any: this.state.country };
       if (this.state.repository.length) pfFilters.repository = { any: this.state.repository };
       if (this.state.level.length) pfFilters.level = { any: this.state.level };
       if (this.state.digital_status.length) pfFilters.digital_status = { any: this.state.digital_status };
@@ -654,6 +661,17 @@ class SearchPage {
 
     const filters = data.filters || {};
 
+    // Country facet
+    if (filters.country) {
+      sidebar.appendChild(this.renderFacetGroup(
+        'País',
+        'country',
+        filters.country,
+        this.state.country,
+        (name) => name
+      ));
+    }
+
     // Repository facet — keyed by display name, no mapping needed
     if (filters.repository) {
       sidebar.appendChild(this.renderFacetGroup(
@@ -1059,6 +1077,7 @@ class SearchPage {
   renderPills() {
     const hasFilters = this.state.q ||
       this.state.textFilters.length > 0 ||
+      this.state.country.length > 0 ||
       this.state.repository.length > 0 ||
       this.state.level.length > 0 ||
       this.state.digital_status.length > 0 ||
@@ -1101,6 +1120,14 @@ class SearchPage {
           this.updateUrl();
           this.search();
         }
+      ));
+    }
+
+    // Country pills
+    for (const c of this.state.country) {
+      container.appendChild(this.createPill(
+        c,
+        () => this.handlePillRemove('country', c)
       ));
     }
 
@@ -1286,7 +1313,8 @@ class SearchPage {
     msg.textContent = 'No se encontraron resultados';
     div.appendChild(msg);
 
-    const hasFilters = this.state.repository.length > 0 ||
+    const hasFilters = this.state.country.length > 0 ||
+      this.state.repository.length > 0 ||
       this.state.level.length > 0 ||
       this.state.digital_status.length > 0;
 
@@ -1376,6 +1404,7 @@ class SearchPage {
 
   handleClearAll() {
     this.state.textFilters = [];
+    this.state.country = [];
     this.state.repository = [];
     this.state.level = [];
     this.state.digital_status = [];
@@ -1409,6 +1438,14 @@ class SearchPage {
    */
   estimateFilterCount() {
     const counts = [];
+
+    if (this.state.country.length && this.globalFilters.country) {
+      let sum = 0;
+      for (const name of this.state.country) {
+        sum += this.globalFilters.country[name] || 0;
+      }
+      counts.push(sum);
+    }
 
     if (this.state.repository.length && this.globalFilters.repository) {
       let sum = 0;
