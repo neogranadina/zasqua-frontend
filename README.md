@@ -1,18 +1,22 @@
 # Zasqua Frontend
 
-Static site frontend for the [Zasqua](https://zasqua.org) archival platform, built with [Eleventy](https://www.11ty.dev/) (11ty) and [Pagefind](https://pagefind.app/).
+Static site frontend for [Zasqua](https://zasqua.org), an open-source archival platform for hosting and discovering large collections of digitized historical documents. Built with [Eleventy](https://www.11ty.dev/) (11ty) and [Pagefind](https://pagefind.app/).
 
 ## Overview
 
-Zasqua provides public access to 104,000+ archival descriptions from four Colombian and one Peruvian repository. The entire public site is static — no server required at runtime. Search runs client-side via Pagefind's WASM engine; tree navigation loads pre-built JSON files on demand.
+Zasqua Frontend generates the public site at [zasqua.org](https://zasqua.org), providing access to over 104,000 archival descriptions from five repositories in Colombia and Peru. The entire site is static — no server required at runtime. Search runs client-side via Pagefind's WASM engine, hierarchical navigation loads pre-built JSON trees on demand, and all images are served as IIIF Level 0 static tiles.
+
+This architecture is a deliberate application of minimal computing principles: the platform serves over 100,000 descriptions with faceted search, Miller column hierarchy browsing, and high-resolution image viewing — all without a single server-side process. The result is a site that is fast, cacheable, cheap to host, and resilient. Because the public site is just files — HTML, JSON, static image tiles — it can be archived, mirrored, or rebuilt from exports with no dependencies on running services.
 
 **Key features:**
 
 - Static HTML pages for every archival description
 - Client-side search with faceting, accent tolerance, and hierarchical date filtering
-- Collapsible tree navigation for browsing archival hierarchies
-- OCR full-text search for digitized PE-BN materials (hidden from display, indexed for search)
-- Responsive design with mobile filter panel
+- Miller column tree navigation for browsing archival hierarchies
+- IIIF deep-zoom viewer for 121,000+ digitized images
+- Full-text search across OCR content from digitized materials
+- Bilingual metadata (English and Spanish)
+- Responsive design with mobile-optimized viewer
 
 ## Requirements
 
