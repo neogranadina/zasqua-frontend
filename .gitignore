@@ -1,6 +1,7 @@
 _site/
 node_modules/
 data/
+src/_data/export/
 .DS_Store
 *.log
 logs/
