@@ -2193,6 +2193,12 @@ ul.detail-list {
 .desc-layout.viewer-expanded .viewer-left-btns .viewer-pill-fullscreen { display: inline-flex; }
 .desc-layout.viewer-expanded .viewer-right-btns { display: flex; }
 
+/* Mobile: skip expanded state, go straight to fullscreen */
+@media (max-width: 768px) {
+  .viewer-left-btns .viewer-pill-expand { display: none; }
+  .viewer-left-btns .viewer-pill-fullscreen { display: inline-flex; }
+}
+
 /* Fullscreen state: hide Contraer (does nothing in fullscreen) */
 .desc-viewer:fullscreen .viewer-pill-contraer { display: none !important; }
 .desc-viewer:-webkit-full-screen .viewer-pill-contraer { display: none !important; }
