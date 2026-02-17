@@ -145,6 +145,10 @@ The Django backend is only needed during cataloging and export — not at runtim
 | `DEV_MODE` | `false` | Limit descriptions to 100 for faster builds |
 | `SITE_URL` | `http://localhost:8080` | Base URL for the site |
 
+## Related
+
+- [Zasqua Backend](https://github.com/neogranadina/zasqua-backend) — Django application for cataloguing and data export
+
 ## License
 
 GPL-3.0. See [LICENSE](LICENSE) for details.
