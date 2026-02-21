@@ -335,7 +335,7 @@ img {
 /* Hero search form */
 .hero .search-form {
   display: flex;
-  width: 400px;
+  width: 300px;
   max-width: 100%;
   background: rgba(255,255,255,0.95);
   margin: 0 auto;
