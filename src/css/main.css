@@ -2046,6 +2046,102 @@ ul.detail-list {
   margin: 0;
 }
 
+/* Reproduction conditions sub-sections */
+.repro-subsection {
+  margin-bottom: 10px;
+}
+
+.repro-subsection:last-child {
+  margin-bottom: 0;
+}
+
+.repro-subheading {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+/* Reutilizacion section */
+.reuse-blurb {
+  font-size: 14px;
+  color: var(--text-color);
+  line-height: 1.6;
+  margin: 0 0 var(--spacing-md);
+}
+
+.reuse-blurb a {
+  color: var(--text-dark);
+  text-decoration: underline;
+  text-decoration-color: #ccc;
+  text-underline-offset: 2px;
+}
+
+.reuse-blurb a:hover {
+  color: var(--accent-link);
+}
+
+.reuse-manifest-label {
+  display: block;
+  font-size: 14px;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+.reuse-manifest-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reuse-manifest-url {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-color);
+  background: var(--bg-gray);
+  padding: 8px 12px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+}
+
+.reuse-copy-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border: 1px solid #dedede;
+  border-radius: 50px;
+  background: #fff;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-color);
+  transition: background-color 0.15s ease;
+}
+
+.reuse-copy-btn:hover {
+  background-color: #f5f5f5;
+}
+
+.reuse-copy-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+/* Repository link in metadata */
+.detail-field a {
+  color: var(--text-dark);
+  text-decoration: underline;
+  text-decoration-color: #ccc;
+  text-underline-offset: 2px;
+}
+
+.detail-field a:hover {
+  color: var(--accent-link);
+}
+
 /* IIIF Viewer */
 .desc-viewer {
   height: 540px;

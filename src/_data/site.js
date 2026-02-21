@@ -5,5 +5,6 @@ module.exports = {
   language: "es",
   buildTime: new Date().toISOString(),
   buildDate: new Date().toISOString().split('T')[0],
-  buildYear: new Date().getFullYear()
+  buildYear: new Date().getFullYear(),
+  version: "0.2.1"
 };

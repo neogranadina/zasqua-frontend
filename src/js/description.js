@@ -1,5 +1,24 @@
 document.addEventListener("DOMContentLoaded", function() {
 
+  // Copy-to-clipboard for IIIF manifest URL
+  var copyBtns = document.querySelectorAll(".reuse-copy-btn");
+  for (var i = 0; i < copyBtns.length; i++) {
+    copyBtns[i].addEventListener("click", function() {
+      var btn = this;
+      var url = btn.getAttribute("data-copy-url");
+      if (!url) return;
+      navigator.clipboard.writeText(url).then(function() {
+        var icon = btn.querySelector(".material-symbols-outlined");
+        var originalHTML = btn.innerHTML;
+        icon.textContent = "check";
+        btn.lastChild.textContent = " Copiado";
+        setTimeout(function() {
+          btn.innerHTML = originalHTML;
+        }, 2000);
+      });
+    });
+  }
+
   // Children tree accordion
   var toggles = document.querySelectorAll(".children-tree-toggle");
   for (var i = 0; i < toggles.length; i++) {

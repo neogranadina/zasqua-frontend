@@ -67,6 +67,13 @@ eleventyComputed:
         <div class="detail-section">
           <h3>{{ ui.description.metadataHeader }}</h3>
 
+          {% if repo %}
+            <div class="detail-field">
+              <span class="detail-label">{{ ui.fields.repository }}</span>
+              <span class="detail-value"><a href="/{{ repo.code | safeSlug }}/">{{ repo.name }}</a></span>
+            </div>
+          {% endif %}
+
           {% if desc.date_expression %}
             <div class="detail-field">
               <span class="detail-label">{{ ui.fields.date }}</span>
@@ -171,36 +178,70 @@ eleventyComputed:
           </div>
         {% endif %}
 
-        {# Section: Condiciones de acceso (ISAD 3.4) #}
-        {% if desc.access_conditions or desc.reproduction_conditions or desc.language %}
+        {# Section: Personas y entidades #}
+        {% if desc.creator_display %}
           <div class="detail-section">
-            <h3>{{ ui.description.accessConditionsHeader }}</h3>
-
-            {% if desc.access_conditions %}
-              <div class="detail-field">
-                <span class="detail-label">{{ ui.fields.accessConditions }}</span>
-                <span class="detail-value">{{ desc.access_conditions }}</span>
-              </div>
-            {% endif %}
-
-            {% if desc.reproduction_conditions %}
-              <div class="detail-field">
-                <span class="detail-label">{{ ui.fields.reproductionConditions }}</span>
-                <span class="detail-value">{{ desc.reproduction_conditions }}</span>
-              </div>
-            {% endif %}
-
-            {% if desc.language %}
-              <div class="detail-field">
-                <span class="detail-label">{{ ui.fields.language }}</span>
-                <span class="detail-value">{{ desc.language }}</span>
-              </div>
-            {% endif %}
+            <h3>{{ ui.description.entitiesHeader }}</h3>
+            <div class="detail-field">
+              <span class="detail-label">{{ ui.roles.creator }}</span>
+              <span class="detail-value">{{ desc.creator_display }}</span>
+            </div>
           </div>
         {% endif %}
 
+        {# Section: Lugares #}
+        {% if desc.place_display %}
+          <div class="detail-section">
+            <h3>{{ ui.description.placesHeader }}</h3>
+            <div class="detail-field">
+              <span class="detail-value">{{ desc.place_display }}</span>
+            </div>
+          </div>
+        {% endif %}
+
+        {# Section: Condiciones de acceso (ISAD 3.4) #}
+        <div class="detail-section">
+          <h3>{{ ui.description.accessConditionsHeader }}</h3>
+
+          {% if desc.access_conditions %}
+            <div class="detail-field">
+              <span class="detail-label">{{ ui.fields.accessConditions }}</span>
+              <span class="detail-value">{{ desc.access_conditions }}</span>
+            </div>
+          {% endif %}
+
+          <div class="detail-field">
+            <span class="detail-label">{{ ui.fields.reproductionConditions }}</span>
+            <div class="detail-value">
+              <div class="repro-subsection">
+                <strong class="repro-subheading">Catálogos y descripciones</strong>
+                <span>Los catálogos y descripciones de Zasqua son de libre acceso.</span>
+              </div>
+              {% if desc.reproduction_conditions %}
+                <div class="repro-subsection">
+                  <strong class="repro-subheading">Documentos originales</strong>
+                  <span>{{ desc.reproduction_conditions }}</span>
+                </div>
+              {% endif %}
+              {% if desc.iiif_manifest_url and repo %}
+                <div class="repro-subsection">
+                  <strong class="repro-subheading">Imágenes</strong>
+                  <span>{{ repo.image_reproduction_text }}</span>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if desc.language %}
+            <div class="detail-field">
+              <span class="detail-label">{{ ui.fields.language }}</span>
+              <span class="detail-value">{{ desc.language }}</span>
+            </div>
+          {% endif %}
+        </div>
+
         {# Section: Materiales relacionados (ISAD 3.5) #}
-        {% if desc.location_of_originals or desc.related_materials %}
+        {% if desc.location_of_originals or desc.location_of_copies or desc.related_materials %}
           <div class="detail-section">
             <h3>{{ ui.description.relatedMaterialsHeader }}</h3>
 
@@ -208,6 +249,13 @@ eleventyComputed:
               <div class="detail-field">
                 <span class="detail-label">{{ ui.fields.locationOfOriginals }}</span>
                 <span class="detail-value">{{ desc.location_of_originals }}</span>
+              </div>
+            {% endif %}
+
+            {% if desc.location_of_copies %}
+              <div class="detail-field">
+                <span class="detail-label">{{ ui.fields.locationOfCopies }}</span>
+                <span class="detail-value">{{ desc.location_of_copies }}</span>
               </div>
             {% endif %}
 
@@ -248,23 +296,20 @@ eleventyComputed:
           </div>
         {% endif %}
 
-        {# Section: Personas y entidades #}
-        {% if desc.creator_display %}
+        {# Section: Reutilizacion (IIIF reuse) #}
+        {% if desc.iiif_manifest_url %}
           <div class="detail-section">
-            <h3>{{ ui.description.entitiesHeader }}</h3>
-            <div class="detail-field">
-              <span class="detail-label">{{ ui.roles.creator }}</span>
-              <span class="detail-value">{{ desc.creator_display }}</span>
-            </div>
-          </div>
-        {% endif %}
-
-        {# Section: Lugares #}
-        {% if desc.place_display %}
-          <div class="detail-section">
-            <h3>{{ ui.description.placesHeader }}</h3>
-            <div class="detail-field">
-              <span class="detail-value">{{ desc.place_display }}</span>
+            <h3>{{ ui.description.reuseHeader }}</h3>
+            <p class="reuse-blurb">Zasqua utiliza el estándar <a href="https://iiif.io" target="_blank" rel="noopener">IIIF</a> para publicar imágenes y se inspira en los <a href="https://journal.code4lib.org/articles/13427" target="_blank" rel="noopener">principios FAIR</a> para hacer sus colecciones más abiertas y reutilizables. Copia la dirección del manifiesto IIIF a continuación para abrir o integrar este documento en otro visor o plataforma compatible, como <a href="https://telar.org" target="_blank" rel="noopener">Telar</a>.</p>
+            <div class="reuse-manifest">
+              <strong class="reuse-manifest-label">Manifiesto IIIF</strong>
+              <div class="reuse-manifest-row">
+                <code class="reuse-manifest-url">{{ desc.iiif_manifest_url }}</code>
+                <button class="reuse-copy-btn" data-copy-url="{{ desc.iiif_manifest_url }}">
+                  <span class="material-symbols-outlined">content_copy</span>
+                  Copiar
+                </button>
+              </div>
             </div>
           </div>
         {% endif %}
