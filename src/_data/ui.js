@@ -84,6 +84,8 @@ module.exports = {
     entitiesHeader: "Personas y entidades relacionadas",
     placesHeader: "Lugares",
     reuseHeader: "Reutilización",
+    metsLabel: "Metadatos METS",
+    iiifLabel: "Manifiesto IIIF",
     childrenHeader: "Contenido",
     previous: "Anterior",
     next: "Siguiente",

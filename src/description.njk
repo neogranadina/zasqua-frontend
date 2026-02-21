@@ -296,13 +296,29 @@ eleventyComputed:
           </div>
         {% endif %}
 
-        {# Section: Reutilizacion (IIIF reuse) #}
-        {% if desc.iiif_manifest_url %}
-          <div class="detail-section">
-            <h3>{{ ui.description.reuseHeader }}</h3>
-            <p class="reuse-blurb">Zasqua utiliza el estándar <a href="https://iiif.io" target="_blank" rel="noopener">IIIF</a> para publicar imágenes y se inspira en los <a href="https://journal.code4lib.org/articles/13427" target="_blank" rel="noopener">principios FAIR</a> para hacer sus colecciones más abiertas y reutilizables. Copia la dirección del manifiesto IIIF a continuación para abrir o integrar este documento en otro visor o plataforma compatible, como <a href="https://telar.org" target="_blank" rel="noopener">Telar</a>.</p>
+        {# Section: Reutilizacion #}
+        <div class="detail-section">
+          <h3>{{ ui.description.reuseHeader }}</h3>
+          {% if desc.iiif_manifest_url %}
+            <p class="reuse-blurb">Zasqua se inspira en los <a href="https://journal.code4lib.org/articles/13427" target="_blank" rel="noopener">principios FAIR</a> para hacer sus colecciones más abiertas y reutilizables. Utiliza el estándar <a href="https://www.loc.gov/standards/mets/" target="_blank" rel="noopener">METS</a> para publicar metadatos e <a href="https://iiif.io" target="_blank" rel="noopener">IIIF</a> para publicar imágenes. Copia la dirección del manifiesto IIIF a continuación para abrir o integrar este documento en otro visor o plataforma compatible, como <a href="https://telar.org" target="_blank" rel="noopener">Telar</a>.</p>
+          {% else %}
+            <p class="reuse-blurb">Zasqua se inspira en los <a href="https://journal.code4lib.org/articles/13427" target="_blank" rel="noopener">principios FAIR</a> para hacer sus colecciones más abiertas y reutilizables. Utiliza el estándar <a href="https://www.loc.gov/standards/mets/" target="_blank" rel="noopener">METS</a> para publicar metadatos.</p>
+          {% endif %}
+          {% if desc.mets_url %}
             <div class="reuse-manifest">
-              <strong class="reuse-manifest-label">Manifiesto IIIF</strong>
+              <strong class="reuse-manifest-label">{{ ui.description.metsLabel }}</strong>
+              <div class="reuse-manifest-row">
+                <code class="reuse-manifest-url">{{ desc.mets_url }}</code>
+                <button class="reuse-copy-btn" data-copy-url="{{ desc.mets_url }}">
+                  <span class="material-symbols-outlined">content_copy</span>
+                  Copiar
+                </button>
+              </div>
+            </div>
+          {% endif %}
+          {% if desc.iiif_manifest_url %}
+            <div class="reuse-manifest">
+              <strong class="reuse-manifest-label">{{ ui.description.iiifLabel }}</strong>
               <div class="reuse-manifest-row">
                 <code class="reuse-manifest-url">{{ desc.iiif_manifest_url }}</code>
                 <button class="reuse-copy-btn" data-copy-url="{{ desc.iiif_manifest_url }}">
@@ -311,8 +327,8 @@ eleventyComputed:
                 </button>
               </div>
             </div>
-          </div>
-        {% endif %}
+          {% endif %}
+        </div>
 
         {# Section: Children #}
         {% if desc.has_children %}
