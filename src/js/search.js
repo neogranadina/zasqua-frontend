@@ -31,6 +31,7 @@ class SearchPage {
       level: [],         // display labels (e.g. "Fondo", "Serie")
       digital_status: [],  // 'zasqua', 'external' (future), 'none'
       dateFilter: null,  // { level: 'century'|'decade'|'year', label, years: [...existing years only] }
+      ancestor: [],
       parent: '',
       sort: '',
       page: 1
@@ -96,6 +97,7 @@ class SearchPage {
       for (let i = base; i < base + 100; i++) years.push(String(i));
       this.state.dateFilter = { level: 'century', label: `Siglo ${this.romanCentury(num)}`, years };
     }
+    this.state.ancestor = params.getAll('ancestor');
     this.state.parent = params.get('parent') || '';
     this.state.sort = params.get('sort') || '';
     this.state.page = parseInt(params.get('page'), 10) || 1;
@@ -128,6 +130,9 @@ class SearchPage {
         params.set('century', String(Math.floor(firstYear / 100) + 1));
       }
     }
+    for (const a of this.state.ancestor) {
+      params.append('ancestor', a);
+    }
     if (this.state.parent) params.set('parent', this.state.parent);
     if (this.state.sort) params.set('sort', this.state.sort);
     if (this.state.page > 1) params.set('page', this.state.page);
@@ -150,6 +155,7 @@ class SearchPage {
       this.state.level.length > 0 ||
       this.state.digital_status.length > 0 ||
       this.state.dateFilter !== null ||
+      this.state.ancestor.length > 0 ||
       this.state.parent ||
       this.state.textFilters.some(f => f.op === 'NOT');
 
@@ -217,6 +223,7 @@ class SearchPage {
       if (this.state.dateFilter && this.state.dateFilter.years.length) {
         pfFilters.year = { any: this.state.dateFilter.years };
       }
+      if (this.state.ancestor.length) pfFilters.ancestor = { any: this.state.ancestor };
       if (this.state.parent) {
         pfFilters.parent_reference_code = this.state.parent;
       }
@@ -1082,6 +1089,7 @@ class SearchPage {
       this.state.level.length > 0 ||
       this.state.digital_status.length > 0 ||
       this.state.dateFilter !== null ||
+      this.state.ancestor.length > 0 ||
       this.state.parent;
 
     if (!hasFilters) return null;
@@ -1157,6 +1165,14 @@ class SearchPage {
           this.updateUrl();
           this.search();
         }
+      ));
+    }
+
+    // Ancestor filter pills
+    for (const a of this.state.ancestor) {
+      container.appendChild(this.createPill(
+        a,
+        () => this.handlePillRemove('ancestor', a)
       ));
     }
 
@@ -1409,6 +1425,7 @@ class SearchPage {
     this.state.level = [];
     this.state.digital_status = [];
     this.state.dateFilter = null;
+    this.state.ancestor = [];
     this.state.parent = '';
     this.state.page = 1;
     this.updateUrl();
@@ -1475,6 +1492,14 @@ class SearchPage {
       let sum = 0;
       for (const y of this.state.dateFilter.years) {
         sum += this.globalFilters.year[y] || 0;
+      }
+      counts.push(sum);
+    }
+
+    if (this.state.ancestor.length && this.globalFilters.ancestor) {
+      let sum = 0;
+      for (const a of this.state.ancestor) {
+        sum += this.globalFilters.ancestor[a] || 0;
       }
       counts.push(sum);
     }

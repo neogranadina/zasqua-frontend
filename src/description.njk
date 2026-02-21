@@ -27,6 +27,11 @@ eleventyComputed:
   <span data-pagefind-meta="date_expression">{{ desc.date_expression or '' }}</span>
   <span data-pagefind-meta="digital_status">{% if desc.has_digital %}zasqua{% else %}none{% endif %}</span>
   {% if desc.country %}<span data-pagefind-filter="country">{{ desc.country }}</span>{% endif %}
+  <span data-pagefind-filter="ancestor">{{ desc.repository_code }}</span>
+  {% for anc in desc._ancestors %}
+    <span data-pagefind-filter="ancestor">{{ anc.reference_code }}</span>
+  {% endfor %}
+  <span data-pagefind-filter="ancestor">{{ desc.reference_code }}</span>
 </div>
 
 {# Breadcrumb #}
