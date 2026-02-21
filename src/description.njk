@@ -335,24 +335,16 @@ eleventyComputed:
           {% endif %}
         </div>
 
-        {# Section: Children #}
-        {% if desc.has_children %}
-          <div class="detail-section" data-pagefind-ignore>
-            <h3>{{ ui.description.childrenHeader }}</h3>
-            {% include "children-tree.njk" %}
-          </div>
-        {% endif %}
-
       </div>
 
-      {# Right column: aside (only for descriptions without children) #}
-      {% if not desc.has_children %}
+      {# Right column: aside #}
+      {% if desc.iiif_manifest_url or not desc.has_children %}
         <div class="desc-aside">
           {% if desc.iiif_manifest_url %}
-            {# State 1: IIIF viewer #}
+            {# IIIF viewer #}
             <div class="desc-viewer" data-manifest="{{ desc.iiif_manifest_url }}"></div>
           {% else %}
-            {# State 2: Not digitised notice #}
+            {# Not digitised notice #}
             <div class="desc-notice">
               <span class="material-symbols-outlined desc-notice-icon">inventory_2</span>
               <div class="desc-notice-title">{{ ui.description.notDigitised }}</div>
@@ -366,6 +358,24 @@ eleventyComputed:
       {% endif %}
 
     </div>
+
+    {# Children (Miller columns) — full width, outside the two-column layout #}
+    {% if desc.has_children %}
+      <div class="detail-section" data-pagefind-ignore>
+        <h3>{{ ui.description.childrenHeader }}</h3>
+        <div class="tree-header">
+          <a href="/buscar/?ancestor={{ desc.reference_code }}" class="search-collection-link">
+            <span class="material-symbols-outlined">search</span>
+            Buscar en esta unidad
+          </a>
+        </div>
+        <div id="collection-tree"
+             data-parent-id="{{ desc.id }}"
+             data-level-labels='{{ ui.levelsPlural | dump | safe }}'>
+        </div>
+      </div>
+    {% endif %}
+
   </div>
 </div>
 
@@ -385,4 +395,7 @@ eleventyComputed:
     <script src="/vendor/tify/tify.js"></script>
   {% endif %}
   <script src="/js/description.js"></script>
+  {% if desc.has_children %}
+    <script src="/js/tree.js"></script>
+  {% endif %}
 {% endblock %}

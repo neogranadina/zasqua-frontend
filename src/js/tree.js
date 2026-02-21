@@ -343,17 +343,26 @@ class MillerColumnsTree {
   }
 
   /**
-   * Extract document number from reference code for leaf items
-   * Scans backwards to find the LAST purely numeric segment
+   * Extract document number from reference code for leaf items.
+   * Scans backwards to find a document-number segment:
+   *   1. "dNNN" or "nNNN" prefix (e.g., d005, n003) — strip the letter, return "005"/"003"
+   *   2. Pure numeric (e.g., 001) — return as-is
+   * e.g., "co-ahrb-aht-009-d005" -> "005"
    * e.g., "co-ahr-gob-caj001-car001-001" -> "001"
-   * e.g., "co-ahrb-aht-005-juicio" -> "005"
    */
   extractDocNumber(refCode) {
     if (!refCode) return null;
 
     const parts = refCode.split('-');
 
-    // Scan backwards to find the last purely numeric segment
+    // First pass: look for dNNN or nNNN segments (document identifiers)
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (/^[dn]\d+$/.test(parts[i])) {
+        return parts[i].substring(1);
+      }
+    }
+
+    // Second pass: last purely numeric segment
     for (let i = parts.length - 1; i >= 0; i--) {
       if (/^\d+$/.test(parts[i])) {
         return parts[i];
@@ -367,31 +376,38 @@ class MillerColumnsTree {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   const treeContainer = document.getElementById('collection-tree');
-  if (treeContainer) {
-    const repoCode = treeContainer.dataset.repoCode;
+  if (!treeContainer) return;
 
-    // Get level labels from data attribute (JSON)
-    let levelLabels = {};
+  let levelLabels = {};
+  try {
+    levelLabels = JSON.parse(treeContainer.dataset.levelLabels || '{}');
+  } catch (e) {
+    console.warn('Could not parse level labels');
+  }
+
+  const tree = new MillerColumnsTree(treeContainer, {
+    repoCode: treeContainer.dataset.repoCode || '',
+    levelLabels
+  });
+
+  // Case 1: Repository page — root data embedded in page
+  const rootDataEl = document.getElementById('root-descriptions-data');
+  if (rootDataEl) {
     try {
-      levelLabels = JSON.parse(treeContainer.dataset.levelLabels || '{}');
+      tree.loadRoot(JSON.parse(rootDataEl.textContent));
     } catch (e) {
-      console.warn('Could not parse level labels');
+      console.error('Could not parse root descriptions:', e);
     }
+    return;
+  }
 
-    const tree = new MillerColumnsTree(treeContainer, {
-      repoCode,
-      levelLabels
+  // Case 2: Description page — fetch children from static JSON
+  const parentId = treeContainer.dataset.parentId;
+  if (parentId) {
+    tree.fetchChildren(parentId).then(children => {
+      tree.loadRoot(children);
+    }).catch(e => {
+      console.error('Could not load children:', e);
     });
-
-    // Load root data from embedded JSON
-    const rootDataEl = document.getElementById('root-descriptions-data');
-    if (rootDataEl) {
-      try {
-        const rootData = JSON.parse(rootDataEl.textContent);
-        tree.loadRoot(rootData);
-      } catch (e) {
-        console.error('Could not parse root descriptions:', e);
-      }
-    }
   }
 });

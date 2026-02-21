@@ -19,17 +19,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // Children tree accordion
-  var toggles = document.querySelectorAll(".children-tree-toggle");
-  for (var i = 0; i < toggles.length; i++) {
-    toggles[i].setAttribute("aria-expanded", "false");
-    toggles[i].addEventListener("click", function() {
-      var expanded = this.getAttribute("aria-expanded") === "true";
-      this.setAttribute("aria-expanded", expanded ? "false" : "true");
-      this.closest(".children-tree-item").classList.toggle("expanded");
-    });
-  }
-
   // IIIF Viewer (TIFY)
   var viewerEl = document.querySelector(".desc-viewer[data-manifest]");
   if (!viewerEl || typeof Tify === "undefined") return;

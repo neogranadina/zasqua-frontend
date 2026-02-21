@@ -28,18 +28,10 @@ module.exports = async function() {
     reposByCode.set(repo.code, repo);
   }
 
-  // Build lookup maps
+  // Build lookup map
   const byRefCode = new Map();
-  const childrenByParentId = new Map();
-
   for (const desc of descriptions) {
     byRefCode.set(desc.reference_code, desc);
-    if (desc.parent_id) {
-      if (!childrenByParentId.has(desc.parent_id)) {
-        childrenByParentId.set(desc.parent_id, []);
-      }
-      childrenByParentId.get(desc.parent_id).push(desc);
-    }
   }
 
   // Attach precomputed data to each description
@@ -60,11 +52,8 @@ module.exports = async function() {
 
     // Repository object
     desc._repo = reposByCode.get(desc.repository_code) || null;
-
-    // Children array
-    desc._children = childrenByParentId.get(desc.id) || [];
   }
 
-  console.log(`[descriptions] Precomputed ancestors, repos, and children`);
+  console.log(`[descriptions] Precomputed ancestors and repos`);
   return descriptions;
 };
