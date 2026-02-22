@@ -2,6 +2,38 @@
 
 All notable changes to the Zasqua frontend will be documented in this file. Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] — 2026-02-21
+
+Standards-based metadata publishing, description page improvements, and title improvement for 86K Colombian descriptions.
+
+### Added
+
+- Reutilisation section on all description pages — METS URL with copy button, IIIF manifest URL for digitised items, FAIR/IIIF/METS blurb with links
+- Repository name as first linked field in description metadata (all levels)
+- Reproduction conditions rewrite — three-part structure: catalogues (libre acceso), originals (where data exists), images (per-repository licence and contact)
+- Location of copies field (ISAD 3.5.2) with per-repository digitisation credits
+- Ancestor chain search filter — Pagefind `ancestor` filter indexes full hierarchy, enabling scoped search at any level
+- "Buscar en esta coleccion" link on repository pages now uses ancestor filter
+- Miller columns on container description pages — replaces two-level accordion with lazy-loaded Miller columns
+- "Buscar en esta unidad" link on container pages using ancestor filter
+- Footer version number display
+
+### Changed
+
+- IIIF manifest paths now use reference_code slug instead of object_idno
+- Description page section order: Personas y entidades moved above Condiciones de acceso
+- Description page layout: metadata column constrained to consistent width; children tree breaks out full-width below
+- 86,049 Colombian description titles improved (ACC, AHR, AHRB, AHJCI) — truncated scope_content fragments replaced with proper archival titles
+
+### Removed
+
+- Children tree accordion (`children-tree.njk`) — replaced by Miller columns
+- Build-time `_children` computation — children now fetched lazily from static JSON
+
+### Fixed
+
+- AHRB document title prefixes: documents within a legajo now display their own document number instead of the parent legajo number
+
 ## [0.2.0] — 2026-02-17
 
 IIIF viewer integration, metadata display expansion, and full-text search in OCR content.
