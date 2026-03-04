@@ -6,6 +6,14 @@ module.exports = {
     browse: "Explorar"
   },
 
+  // Error pages
+  error404: {
+    title: "Página no encontrada",
+    message: "La página solicitada no existe o fue trasladada.",
+    home: "Volver al inicio",
+    search: "Buscar en el catálogo"
+  },
+
   // Breadcrumbs
   breadcrumb: {
     home: "Inicio"
