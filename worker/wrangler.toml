@@ -1,0 +1,17 @@
+# Cloudflare Worker for serving zasqua.org from R2.
+#
+# account_id is read from the CLOUDFLARE_ACCOUNT_ID env var — not stored here
+# because this repo is public. Set it in your shell profile or pass it inline:
+#
+#   CLOUDFLARE_ACCOUNT_ID=... npx wrangler deploy
+#
+# To deploy:  cd worker && npx wrangler deploy
+# To tail:    cd worker && npx wrangler tail
+
+name = "zasqua-site"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[[r2_buckets]]
+binding = "SITE"
+bucket_name = "zasqua-site"
