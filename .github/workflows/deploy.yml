@@ -2,6 +2,15 @@ name: Build and deploy to R2
 
 on:
   workflow_dispatch:
+    inputs:
+      rebuild_mode:
+        description: 'Deploy mode'
+        required: true
+        default: 'incremental'
+        type: choice
+        options:
+          - incremental
+          - full
 
 jobs:
   deploy:
@@ -68,7 +77,13 @@ jobs:
           RCLONE_CONFIG_R2_ENDPOINT: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
           RCLONE_CONFIG_R2_ACL: private
         run: |
-          rclone sync _site/ r2:zasqua-site --transfers 32 --checkers 32 --fast-list -v
+          if [ "${{ inputs.rebuild_mode }}" = "full" ]; then
+            echo "Full rebuild: skipping comparison, max parallelism"
+            rclone sync _site/ r2:zasqua-site --no-check-dest --fast-list --transfers 64 --checkers 64 -v
+          else
+            echo "Incremental: comparing and uploading changes only"
+            rclone sync _site/ r2:zasqua-site --fast-list --transfers 32 --checkers 32 -v
+          fi
           echo "Upload complete"
           rclone size r2:zasqua-site
 
