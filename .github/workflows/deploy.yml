@@ -78,8 +78,8 @@ jobs:
           RCLONE_CONFIG_R2_ACL: private
         run: |
           if [ "${{ inputs.rebuild_mode }}" = "full" ]; then
-            echo "Full rebuild: skipping comparison, max parallelism"
-            rclone sync _site/ r2:zasqua-site --no-check-dest --fast-list --transfers 64 --checkers 64 -v
+            echo "Full rebuild: uploading all files, max parallelism"
+            rclone copy _site/ r2:zasqua-site --no-check-dest --fast-list --transfers 64 --checkers 64 -v
           else
             echo "Incremental: comparing and uploading changes only"
             rclone sync _site/ r2:zasqua-site --fast-list --transfers 32 --checkers 32 -v
