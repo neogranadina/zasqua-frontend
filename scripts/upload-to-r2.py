@@ -26,8 +26,10 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+print(f"[{time.strftime('%H:%M:%S')}] Importing boto3...", flush=True)
 import boto3
 from botocore.config import Config
+print(f"[{time.strftime('%H:%M:%S')}] Imports complete", flush=True)
 
 # ---------------------------------------------------------------------------
 # Content-Type and Cache-Control — mirrors worker/worker.js
@@ -148,23 +150,25 @@ def main():
         sys.exit(1)
 
     # Collect files
-    print(f"Scanning {args.source_dir}...")
+    print(f"[{time.strftime('%H:%M:%S')}] Scanning {args.source_dir}...", flush=True)
     files = collect_files(args.source_dir)
+    print(f"[{time.strftime('%H:%M:%S')}] Scan complete: {len(files):,} files", flush=True)
     total_size = sum(os.path.getsize(p) for p, _ in files)
-    print(f"Found {len(files):,} files ({total_size / 1e9:.2f} GB)")
+    print(f"[{time.strftime('%H:%M:%S')}] Found {len(files):,} files ({total_size / 1e9:.2f} GB)", flush=True)
 
     if args.dry_run:
-        print(f"Dry run — would upload {len(files):,} files to {args.bucket}")
+        print(f"Dry run — would upload {len(files):,} files to {args.bucket}", flush=True)
         # Show extension breakdown
         ext_counts = {}
         for _, key in files:
             ext = Path(key).suffix.lower() or "(no ext)"
             ext_counts[ext] = ext_counts.get(ext, 0) + 1
         for ext, count in sorted(ext_counts.items(), key=lambda x: -x[1])[:15]:
-            print(f"  {ext}: {count:,}")
+            print(f"  {ext}: {count:,}", flush=True)
         return
 
     # Create S3 client with retry config
+    print(f"[{time.strftime('%H:%M:%S')}] Creating S3 client...", flush=True)
     s3 = boto3.client(
         "s3",
         endpoint_url=endpoint,
@@ -176,19 +180,37 @@ def main():
             retries={"max_attempts": 3, "mode": "adaptive"},
         ),
     )
+    print(f"[{time.strftime('%H:%M:%S')}] S3 client created", flush=True)
+
+    # Connection test — upload first file and report latency
+    test_path, test_key = files[0]
+    print(f"[{time.strftime('%H:%M:%S')}] Connection test: uploading {test_key}...",
+          flush=True)
+    t0 = time.monotonic()
+    try:
+        upload_file(s3, args.bucket, test_path, test_key)
+        test_ms = (time.monotonic() - t0) * 1000
+        print(f"[{time.strftime('%H:%M:%S')}] Connection test OK: {test_ms:.0f}ms",
+              flush=True)
+    except Exception as e:
+        print(f"[{time.strftime('%H:%M:%S')}] Connection test FAILED: {e}",
+              file=sys.stderr, flush=True)
+        sys.exit(1)
 
     # Upload with thread pool
-    print(f"Uploading to {args.bucket} with {args.concurrency} threads...")
+    print(f"[{time.strftime('%H:%M:%S')}] Uploading to {args.bucket} "
+          f"with {args.concurrency} threads...", flush=True)
     start_time = time.monotonic()
-    uploaded = 0
+    uploaded = 1  # count the connection test file
     failed = 0
-    uploaded_bytes = 0
+    uploaded_bytes = os.path.getsize(test_path)
     errors = []
 
+    remaining = files[1:]  # skip file already uploaded in connection test
     with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
         futures = {
             pool.submit(upload_file, s3, args.bucket, path, key): key
-            for path, key in files
+            for path, key in remaining
         }
         for future in as_completed(futures):
             key = futures[future]
@@ -196,30 +218,33 @@ def main():
                 _, size, _ = future.result()
                 uploaded += 1
                 uploaded_bytes += size
-                if uploaded % 10000 == 0:
+                if uploaded % 1000 == 0:
                     elapsed = time.monotonic() - start_time
                     rate = uploaded / elapsed
-                    print(f"  {uploaded:,}/{len(files):,} files "
+                    print(f"  [{time.strftime('%H:%M:%S')}] "
+                          f"{uploaded:,}/{len(files):,} files "
                           f"({uploaded_bytes / 1e9:.2f} GB, "
-                          f"{rate:.0f} files/s)")
+                          f"{rate:.0f} files/s)", flush=True)
             except Exception as e:
                 failed += 1
                 errors.append((key, str(e)))
                 if failed <= 10:
-                    print(f"  Error uploading {key}: {e}", file=sys.stderr)
+                    print(f"  Error uploading {key}: {e}",
+                          file=sys.stderr, flush=True)
 
     elapsed = time.monotonic() - start_time
     rate = uploaded / elapsed if elapsed > 0 else 0
 
-    print(f"\nDone in {elapsed:.1f}s")
-    print(f"  Uploaded: {uploaded:,} files ({uploaded_bytes / 1e9:.2f} GB)")
-    print(f"  Failed: {failed:,}")
-    print(f"  Rate: {rate:.0f} files/s")
+    print(f"\nDone in {elapsed:.1f}s", flush=True)
+    print(f"  Uploaded: {uploaded:,} files ({uploaded_bytes / 1e9:.2f} GB)",
+          flush=True)
+    print(f"  Failed: {failed:,}", flush=True)
+    print(f"  Rate: {rate:.0f} files/s", flush=True)
 
     if failed > 0:
-        print(f"\n{failed} errors:", file=sys.stderr)
+        print(f"\n{failed} errors:", file=sys.stderr, flush=True)
         for key, err in errors[:20]:
-            print(f"  {key}: {err}", file=sys.stderr)
+            print(f"  {key}: {err}", file=sys.stderr, flush=True)
         sys.exit(1)
 
 
