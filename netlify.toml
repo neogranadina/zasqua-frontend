@@ -1,6 +1,0 @@
-# Builds run in GitHub Actions — Netlify only hosts the deployed output.
-# See .github/workflows/deploy.yml for the full build pipeline.
-
-[build]
-  command = "echo 'Builds run in GitHub Actions, not Netlify.'"
-  publish = "_site"
