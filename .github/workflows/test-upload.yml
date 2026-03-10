@@ -58,4 +58,4 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_ENDPOINT: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
-        run: python3 scripts/upload-to-r2.py _site zasqua-tests --concurrency 200
+        run: python3 scripts/upload-to-r2.py _site zasqua-tests --concurrency 100
