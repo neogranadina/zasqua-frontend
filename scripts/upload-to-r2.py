@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+"""
+Upload _site/ to Cloudflare R2 with high concurrency.
+
+Replaces rclone for full rebuilds. Walks the build output directory and
+PUTs every file to R2 using boto3 with a thread pool. Content-Type and
+Cache-Control headers mirror the serving Worker (worker/worker.js).
+
+Required environment variables:
+    R2_ACCESS_KEY_ID
+    R2_SECRET_ACCESS_KEY
+    R2_ENDPOINT           — https://<account_id>.r2.cloudflarestorage.com
+
+Usage:
+    python3 scripts/upload-to-r2.py <source_dir> <bucket_name> [--concurrency N] [--dry-run]
+
+Examples:
+    python3 scripts/upload-to-r2.py _site zasqua-site --concurrency 100
+    python3 scripts/upload-to-r2.py _site zasqua-tests --dry-run
+"""
+
+import argparse
+import os
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
+import boto3
+from botocore.config import Config
+
+# ---------------------------------------------------------------------------
+# Content-Type and Cache-Control — mirrors worker/worker.js
+# ---------------------------------------------------------------------------
+
+CONTENT_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".xml": "application/xml; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".ico": "image/x-icon",
+    ".webp": "image/webp",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".txt": "text/plain; charset=utf-8",
+    ".webmanifest": "application/manifest+json",
+    ".pf_meta": "application/octet-stream",
+    ".pf_fragment": "application/octet-stream",
+    ".pf_index": "application/octet-stream",
+}
+
+CACHE_CONTROL = {
+    "short": "public, max-age=3600",          # html, xml, default
+    "medium": "public, max-age=86400",         # json
+    "long": "public, max-age=604800",          # css, js
+    "immutable": "public, max-age=31536000, immutable",  # images, fonts
+}
+
+SHORT_EXTS = {".html", ".xml"}
+MEDIUM_EXTS = {".json"}
+LONG_EXTS = {".css", ".js"}
+IMMUTABLE_EXTS = {
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
+    ".svg", ".woff", ".woff2", ".ttf",
+}
+
+
+def content_type(path):
+    ext = Path(path).suffix.lower()
+    return CONTENT_TYPES.get(ext, "application/octet-stream")
+
+
+def cache_control(path):
+    ext = Path(path).suffix.lower()
+    if ext in SHORT_EXTS:
+        return CACHE_CONTROL["short"]
+    if ext in MEDIUM_EXTS:
+        return CACHE_CONTROL["medium"]
+    if ext in LONG_EXTS:
+        return CACHE_CONTROL["long"]
+    if ext in IMMUTABLE_EXTS:
+        return CACHE_CONTROL["immutable"]
+    return CACHE_CONTROL["short"]
+
+
+# ---------------------------------------------------------------------------
+# Upload logic
+# ---------------------------------------------------------------------------
+
+def collect_files(source_dir):
+    """Walk source_dir and return list of (local_path, r2_key) tuples."""
+    source = Path(source_dir)
+    files = []
+    for path in source.rglob("*"):
+        if path.is_file():
+            key = str(path.relative_to(source))
+            files.append((str(path), key))
+    return files
+
+
+def upload_file(s3_client, bucket, local_path, key, dry_run=False):
+    """Upload a single file to R2. Returns (key, size, elapsed_ms)."""
+    size = os.path.getsize(local_path)
+    if dry_run:
+        return (key, size, 0)
+    start = time.monotonic()
+    with open(local_path, "rb") as f:
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=f,
+            ContentType=content_type(key),
+            CacheControl=cache_control(key),
+        )
+    elapsed = (time.monotonic() - start) * 1000
+    return (key, size, elapsed)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Upload build output to R2")
+    parser.add_argument("source_dir", help="Directory to upload (e.g. _site)")
+    parser.add_argument("bucket", help="R2 bucket name (e.g. zasqua-site)")
+    parser.add_argument("--concurrency", type=int, default=100,
+                        help="Number of parallel uploads (default: 100)")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="List files without uploading")
+    args = parser.parse_args()
+
+    source = Path(args.source_dir)
+    if not source.is_dir():
+        print(f"Error: {args.source_dir} is not a directory", file=sys.stderr)
+        sys.exit(1)
+
+    # Check environment
+    endpoint = os.environ.get("R2_ENDPOINT")
+    access_key = os.environ.get("R2_ACCESS_KEY_ID")
+    secret_key = os.environ.get("R2_SECRET_ACCESS_KEY")
+    if not args.dry_run and not all([endpoint, access_key, secret_key]):
+        print("Error: R2_ENDPOINT, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY "
+              "must be set", file=sys.stderr)
+        sys.exit(1)
+
+    # Collect files
+    print(f"Scanning {args.source_dir}...")
+    files = collect_files(args.source_dir)
+    total_size = sum(os.path.getsize(p) for p, _ in files)
+    print(f"Found {len(files):,} files ({total_size / 1e9:.2f} GB)")
+
+    if args.dry_run:
+        print(f"Dry run — would upload {len(files):,} files to {args.bucket}")
+        # Show extension breakdown
+        ext_counts = {}
+        for _, key in files:
+            ext = Path(key).suffix.lower() or "(no ext)"
+            ext_counts[ext] = ext_counts.get(ext, 0) + 1
+        for ext, count in sorted(ext_counts.items(), key=lambda x: -x[1])[:15]:
+            print(f"  {ext}: {count:,}")
+        return
+
+    # Create S3 client with retry config
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=endpoint,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name="auto",
+        config=Config(
+            max_pool_connections=args.concurrency,
+            retries={"max_attempts": 3, "mode": "adaptive"},
+        ),
+    )
+
+    # Upload with thread pool
+    print(f"Uploading to {args.bucket} with {args.concurrency} threads...")
+    start_time = time.monotonic()
+    uploaded = 0
+    failed = 0
+    uploaded_bytes = 0
+    errors = []
+
+    with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
+        futures = {
+            pool.submit(upload_file, s3, args.bucket, path, key): key
+            for path, key in files
+        }
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                _, size, _ = future.result()
+                uploaded += 1
+                uploaded_bytes += size
+                if uploaded % 10000 == 0:
+                    elapsed = time.monotonic() - start_time
+                    rate = uploaded / elapsed
+                    print(f"  {uploaded:,}/{len(files):,} files "
+                          f"({uploaded_bytes / 1e9:.2f} GB, "
+                          f"{rate:.0f} files/s)")
+            except Exception as e:
+                failed += 1
+                errors.append((key, str(e)))
+                if failed <= 10:
+                    print(f"  Error uploading {key}: {e}", file=sys.stderr)
+
+    elapsed = time.monotonic() - start_time
+    rate = uploaded / elapsed if elapsed > 0 else 0
+
+    print(f"\nDone in {elapsed:.1f}s")
+    print(f"  Uploaded: {uploaded:,} files ({uploaded_bytes / 1e9:.2f} GB)")
+    print(f"  Failed: {failed:,}")
+    print(f"  Rate: {rate:.0f} files/s")
+
+    if failed > 0:
+        print(f"\n{failed} errors:", file=sys.stderr)
+        for key, err in errors[:20]:
+            print(f"  {key}: {err}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
