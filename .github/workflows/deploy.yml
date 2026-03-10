@@ -2,20 +2,11 @@ name: Build and deploy to R2
 
 on:
   workflow_dispatch:
-    inputs:
-      rebuild_mode:
-        description: 'Deploy mode'
-        required: true
-        default: 'incremental'
-        type: choice
-        options:
-          - incremental
-          - full
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -32,8 +23,10 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Install B2 CLI
-        run: pip install "b2[full]" --quiet
+      - name: Install Python dependencies
+        run: |
+          pip install "b2[full]" --quiet
+          pip install boto3 --quiet
 
       - name: Download data from B2
         env:
@@ -63,29 +56,13 @@ jobs:
       - name: Index with Pagefind
         run: npx pagefind --site _site
 
-      - name: Install rclone
-        run: |
-          curl -fsSL https://rclone.org/install.sh | sudo bash
-          rclone version
-
       - name: Deploy to R2
         env:
-          RCLONE_CONFIG_R2_TYPE: s3
-          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
-          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          RCLONE_CONFIG_R2_ENDPOINT: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
-          RCLONE_CONFIG_R2_ACL: private
-        run: |
-          if [ "${{ inputs.rebuild_mode }}" = "full" ]; then
-            echo "Full rebuild: high parallelism, size-only comparison"
-            rclone sync _site/ r2:zasqua-site --fast-list --size-only --transfers 64 --checkers 64 -v
-          else
-            echo "Incremental: comparing and uploading changes only"
-            rclone sync _site/ r2:zasqua-site --fast-list --transfers 32 --checkers 32 -v
-          fi
-          echo "Upload complete"
-          rclone size r2:zasqua-site
+          PYTHONUNBUFFERED: "1"
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: python3 scripts/upload-to-r2.py _site zasqua-site --concurrency 100
 
       - name: Purge Cloudflare cache
         env:
